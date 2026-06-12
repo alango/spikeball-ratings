@@ -53,7 +53,7 @@ function Leaderboard({ data }: { data: Awaited<ReturnType<typeof getBoard>> | nu
                 <span className="font-medium">{s.name}</span>{" "}
                 {s.provisional && <ProvisionalBadge />}
               </td>
-              <td className="px-3 py-2 text-right tabular-nums">{s.rating.toFixed(1)}</td>
+              <td className="px-3 py-2 text-right tabular-nums">{s.rating}</td>
               <td className="px-3 py-2 text-right tabular-nums text-slate-500">
                 {s.wins}–{s.losses}
               </td>

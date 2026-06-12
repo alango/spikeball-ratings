@@ -94,7 +94,7 @@ console.log(`\nLeaderboard as of ${asOf}:`);
 for (const s of standings) {
   const tag = s.provisional ? " (provisional)" : "";
   console.log(
-    `  ${s.rank}. ${s.name.padEnd(6)} ${s.rating.toFixed(1).padStart(5)}  ` +
+    `  ${s.rank}. ${s.name.padEnd(6)} ${String(s.rating).padStart(4)}  ` +
       `${s.wins}-${s.losses}${tag}`,
   );
 }

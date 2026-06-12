@@ -44,7 +44,7 @@ export interface Standing {
   rank: number;
   id: PlayerId;
   name: string;
-  /** Conservative score μ − 3σ, drift-adjusted to today (the public number). */
+  /** Conservative score on an Elo-like scale (~1500 center), drift-adjusted to today. */
   rating: number;
   provisional: boolean;
   wins: number;
@@ -61,7 +61,7 @@ export function boardView(
     rank: i + 1,
     id: e.id,
     name: names[e.id] ?? `#${e.id}`,
-    rating: Math.round(e.conservative * 10) / 10,
+    rating: Math.round(e.conservative),
     provisional: e.provisional,
     wins: records[e.id]?.wins ?? 0,
     losses: records[e.id]?.losses ?? 0,

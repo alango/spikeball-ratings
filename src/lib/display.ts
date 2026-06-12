@@ -19,6 +19,18 @@ import type { PlayerId, RatingResults } from "./types";
 export const DISPLAY_Z = 3;
 
 /**
+ * Display the conservative score on a familiar Elo-like scale, per the openskill
+ * FAQ: `ordinal()` computes `alpha·(μ − z·σ) + target`, so with one σ worth ~200
+ * points (alpha = 200/σ) and target 1500 the number reads like an Elo rating.
+ * This is a positive affine rescale of μ − 3σ — it changes the numbers shown, not
+ * the ordering. A brand-new player (μ − 3σ = 0) sits exactly at 1500.
+ * https://openskill.me/en/stable/faq.html#how-do-i-scale-rating-ordinal-score-to-reflect-elo
+ */
+export const ELO_PER_SIGMA = 200;
+export const ELO_TARGET = 1500;
+export const ELO_ALPHA = ELO_PER_SIGMA / DEFAULT_SIGMA;
+
+/**
  * A player is "provisional" until σ falls below this fraction of the initial σ
  * (SPEC §2) — tunable. They can be shown but should be visually marked.
  */
@@ -30,7 +42,7 @@ export interface BoardEntry {
   mu: number;
   /** σ after drift-to-today (>= stored σ). */
   sigma: number;
-  /** μ − 3σ on the drifted σ — the sort key shown to the public. */
+  /** Conservative score (μ − 3σ) on an Elo-like scale (~1500 center). Sort key. */
   conservative: number;
   provisional: boolean;
   lastPlayedDate: string | null;
@@ -56,7 +68,10 @@ export function displayBoard(
       id,
       mu: r.mu,
       sigma,
-      conservative: ordinal({ mu: r.mu, sigma }, { z: DISPLAY_Z }),
+      conservative: ordinal(
+        { mu: r.mu, sigma },
+        { z: DISPLAY_Z, alpha: ELO_ALPHA, target: ELO_TARGET },
+      ),
       provisional: sigma >= PROVISIONAL_SIGMA,
       lastPlayedDate: r.lastPlayedDate,
     };

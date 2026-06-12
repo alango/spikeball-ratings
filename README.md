@@ -12,7 +12,9 @@ working conventions, see **[CLAUDE.md](./CLAUDE.md)**.
 
 - **Rating is strictly win/loss** — the score is stored for interest but never
   affects the rating. Uses [`openskill`](https://github.com/philihp/openskill.js)
-  (Plackett-Luce); the board sorts by the conservative estimate **μ − 3σ**.
+  (Plackett-Luce); the board sorts by the conservative estimate **μ − 3σ**, shown
+  on a familiar Elo-like scale (~1500 center, ~200 points per standard deviation;
+  a brand-new player starts at 1500).
 - **History is the source of truth; ratings are a rebuildable cache.** Every game
   is one row. Any log/edit/delete replays the whole history to recompute ratings —
   ratings are never hand-edited.

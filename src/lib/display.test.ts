@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { displayBoard, PROVISIONAL_SIGMA, DISPLAY_Z } from "./display";
+import {
+  displayBoard,
+  PROVISIONAL_SIGMA,
+  DISPLAY_Z,
+  ELO_ALPHA,
+  ELO_TARGET,
+} from "./display";
 import { DEFAULT_MU, DEFAULT_SIGMA } from "./rating";
 import type { RatingResults } from "./types";
 
@@ -12,10 +18,18 @@ describe("displayBoard — conservative score & sorting", () => {
     };
     const board = displayBoard(results, "2026-06-01");
     expect(board.map((e) => e.id)).toEqual([1, 2, 3]);
-    expect(board[0].conservative).toBeCloseTo(30 - DISPLAY_Z * 2, 6);
+    // Elo-scaled conservative: alpha·(μ − 3σ) + 1500.
+    expect(board[0].conservative).toBeCloseTo(ELO_ALPHA * (30 - DISPLAY_Z * 2) + ELO_TARGET, 6);
   });
 
-  it("never-played players sit at the default and rank last", () => {
+  it("a brand-new player sits exactly at the Elo baseline (μ − 3σ = 0 → 1500)", () => {
+    const results: RatingResults = {
+      1: { mu: DEFAULT_MU, sigma: DEFAULT_SIGMA, lastPlayedDate: null },
+    };
+    expect(displayBoard(results, "2026-06-01")[0].conservative).toBeCloseTo(ELO_TARGET, 6);
+  });
+
+  it("never-played players sit at the default and rank last among the listed", () => {
     const results: RatingResults = {
       1: { mu: 28, sigma: 2, lastPlayedDate: "2026-06-01" },
       2: { mu: DEFAULT_MU, sigma: DEFAULT_SIGMA, lastPlayedDate: null },
@@ -23,6 +37,7 @@ describe("displayBoard — conservative score & sorting", () => {
     const board = displayBoard(results, "2026-06-01");
     expect(board[1].id).toBe(2);
     expect(board[1].sigma).toBeCloseTo(DEFAULT_SIGMA, 10); // no drift applied
+    expect(board[1].conservative).toBeCloseTo(ELO_TARGET, 6);
     expect(board[1].provisional).toBe(true);
   });
 });
