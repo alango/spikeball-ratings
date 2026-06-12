@@ -46,8 +46,10 @@ duplication between them is fine — do not try to share a codebase.
 - Public reads are polled (`usePoll`); route handlers set `dynamic = "force-dynamic"`.
 
 ## Load-bearing rules (see SPEC for why)
-- **Rating is STRICTLY win/loss — never margin.** Score may be stored but the rating
-  ignores it. This is why mixed formats (to 15/to 21/best-of-3) need no handling.
+- **Winner is authoritative; margin is used only when both scores are present.** A
+  scoreless game is rated win/loss alone; with scores, a blowout moves μ more (σ and
+  drift untouched). Mixed formats need no format field — each game is normalized to a
+  common reference (winner = 21) so margins are comparable (see SPEC §2/§4).
 - **History is the source of truth; ratings are a rebuildable cache.** Any edit or
   delete of a game triggers a full replay-rebuild of all ratings. Never hand-edit a
   stored μ/σ.

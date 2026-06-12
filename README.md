@@ -10,11 +10,14 @@ working conventions, see **[CLAUDE.md](./CLAUDE.md)**.
 
 ## How it works (the short version)
 
-- **Rating is strictly win/loss** — the score is stored for interest but never
-  affects the rating. Uses [`openskill`](https://github.com/philihp/openskill.js)
-  (Plackett-Luce); the board sorts by the conservative estimate **μ − 3σ**, shown
-  on a familiar Elo-like scale (~1500 center, ~200 points per standard deviation;
-  a brand-new player starts at 1500).
+- **Win/loss, with margin awareness.** The winner always drives the update; when
+  both scores are recorded a blowout moves the rating more than a close game, while
+  scoreless games are rated on win/loss alone. Scores are normalized to a common
+  reference (winner = 21) so margins stay comparable across formats (to-15, to-21, …)
+  with no format field. Uses [`openskill`](https://github.com/philihp/openskill.js)
+  (Plackett-Luce); the board sorts by the conservative estimate **μ − 3σ**, shown on
+  a familiar Elo-like scale (~1500 center, ~200 points per standard deviation; a
+  brand-new player starts at 1500).
 - **History is the source of truth; ratings are a rebuildable cache.** Every game
   is one row. Any log/edit/delete replays the whole history to recompute ratings —
   ratings are never hand-edited.

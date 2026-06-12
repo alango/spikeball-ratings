@@ -2,8 +2,9 @@
 // are the only non-trivial logic in the app (CLAUDE.md). Tested independently on
 // synthetic history in `rating.test.ts` before any DB/UI exists.
 //
-// Two load-bearing rules live here:
-//   • Rating is STRICTLY win/loss — the score is never read (SPEC §2).
+// Load-bearing rules that live here:
+//   • The winner is authoritative; when both scores are present the update is
+//     margin-aware — a blowout moves μ more than a squeaker (SPEC §2).
 //   • Replay orders by (played_date, id), NEVER insertion time (SPEC §6).
 //
 // We use `openskill` for the math and NEVER hand-roll it. openskill's own per-game
@@ -18,6 +19,26 @@ import type { Game, PlayerId, Rating, RatingResults } from "./types";
 // sigma=25/3, beta=25/6, z=3). New players start here.
 export const DEFAULT_MU = 25;
 export const DEFAULT_SIGMA = 25 / 3;
+
+/**
+ * Margin-of-victory tuning (SPEC §2). openskill amplifies the μ change by
+ * `1 + ln(1 + max(0, |Δscore| − MARGIN))` when `score` + `margin` are supplied.
+ *
+ * Spikeball is played to varying targets (to-15, to-21, …) but we model only
+ * single games, so the winner's score IS the target. We normalize every game onto
+ * a common reference (winner = MARGIN_REFERENCE) before computing the margin, which
+ * makes margins comparable across formats automatically — no format field needed:
+ *
+ *     loserNorm = MARGIN_REFERENCE × loserScore / winnerScore
+ *     normDiff  = MARGIN_REFERENCE − loserNorm = MARGIN_REFERENCE × (1 − loser/winner)
+ *
+ * With MARGIN = 10 on a 21-point reference, amplification only kicks in once the
+ * loser falls under ~52% of the winner's score (normDiff > 10) — so competitive
+ * games behave exactly like the binary update, and only blowouts move μ more (up to
+ * ~3.5×). A game with a missing score falls back to the binary update.
+ */
+export const MARGIN_REFERENCE = 21;
+export const MARGIN = 10;
 
 /**
  * Inactivity drift tuning (SPEC §5), deliberately MILD to start. Variance grows
@@ -100,8 +121,20 @@ export function rebuild(roster: PlayerId[], games: Game[]): RatingResults {
       g.winner === "a" ? [g.teamA, g.teamB] : [g.teamB, g.teamA];
     const winTeam = g.winner === "a" ? teamA : teamB;
     const loseTeam = g.winner === "a" ? teamB : teamA;
+    const winScore = g.winner === "a" ? g.scoreA : g.scoreB;
+    const loseScore = g.winner === "a" ? g.scoreB : g.scoreA;
 
-    const [newWin, newLose] = rate([winTeam, loseTeam], { tau: 0 });
+    // Margin-aware update when both scores are present and consistent with the
+    // winner; otherwise the binary update. openskill reads only the score *gap*.
+    const marginAware =
+      winScore != null && loseScore != null && winScore > loseScore && winScore > 0;
+    const [newWin, newLose] = marginAware
+      ? rate([winTeam, loseTeam], {
+          tau: 0,
+          margin: MARGIN,
+          score: [MARGIN_REFERENCE, (MARGIN_REFERENCE * loseScore) / winScore],
+        })
+      : rate([winTeam, loseTeam], { tau: 0 });
 
     cur.set(winId[0], newWin[0]);
     cur.set(winId[1], newWin[1]);

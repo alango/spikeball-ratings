@@ -54,7 +54,8 @@ const toGameRow = (r: RawGame): GameRow => ({
   scoreB: r.score_b,
 });
 
-/** Map DB rows to the rating module's {@link Game} shape — score is dropped (SPEC §2). */
+/** Map DB rows to the rating module's {@link Game} shape — scores included so the
+ * update can be margin-aware when both are present (SPEC §2). */
 export function toRatingGames(rows: GameRow[]): Game[] {
   return rows.map((r) => ({
     id: r.id,
@@ -62,6 +63,8 @@ export function toRatingGames(rows: GameRow[]): Game[] {
     teamA: r.teamA,
     teamB: r.teamB,
     winner: r.winner,
+    scoreA: r.scoreA,
+    scoreB: r.scoreB,
   }));
 }
 

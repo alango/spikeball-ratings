@@ -17,8 +17,9 @@ export interface Player {
 export type Winner = "a" | "b";
 
 /**
- * A single 2v2 game as the rating module sees it. Deliberately carries NO score —
- * the rating is strictly win/loss (SPEC §2). `playedDate` is a day-granularity
+ * A single 2v2 game as the rating module sees it. `winner` is authoritative; the
+ * scores are optional and, when both present, make the update margin-aware (a
+ * blowout moves μ more than a squeaker — SPEC §2). `playedDate` is a day-granularity
  * calendar date as an ISO `YYYY-MM-DD` string; `id` is the stable intra-day
  * tiebreaker for replay ordering (SPEC §6).
  */
@@ -28,6 +29,8 @@ export interface Game {
   teamA: Pair;
   teamB: Pair;
   winner: Winner;
+  scoreA?: number | null;
+  scoreB?: number | null;
 }
 
 /** An openskill rating belief: skill estimate μ and uncertainty σ. */

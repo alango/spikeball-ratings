@@ -45,12 +45,27 @@ matters for something left running indefinitely). Do NOT hand-roll the rating ma
 > version** — do not trust pseudocode in this spec over the real library. The
 > behaviors described here are the intent; map them onto the actual API.
 
-### STRICTLY win/loss — margin is never used
-The update consumes only *which team won*, never the score. A 21–2 win and a 15–13
-win produce the identical rating change. This is the deliberate league trade: we
-give up margin signal in exchange for native uncertainty + drift, and get our
-signal from **volume of games over time** instead. Consequence we *want*: match
-format is irrelevant (see §4).
+### Win/loss first, with margin-of-victory awareness when scores are known
+The **winner is authoritative** — that is always what the update is built on. When
+both scores are recorded, the update is additionally **margin-aware**: a blowout
+moves μ more than a squeaker. openskill amplifies the μ change by
+`1 + ln(1 + max(0, |Δscore| − MARGIN))` (`MARGIN` tuned to 10); σ and the drift are
+untouched. A game logged **without scores falls back to a pure win/loss update**, so
+scores stay genuinely optional.
+
+**Format-independence is preserved by normalization, not by ignoring margin.** We
+model only single games, so the winner's score *is* the target (to-15, to-21, …).
+Before computing the margin we scale every game onto a common reference
+(winner = 21), which makes margins comparable across formats automatically — no
+format field, no game-type detection (see §4). With `MARGIN = 10` on that reference,
+amplification only begins once the loser falls under ~52% of the winner's score, so
+competitive games behave exactly like the old binary update and only blowouts move
+more (up to ~3.5×).
+
+> Historical note: v1 was *strictly* win/loss (margin deliberately discarded for
+> simplicity). Margin awareness was added later once score normalization made it
+> format-safe; the win/loss outcome remains the backbone and the sole signal when
+> scores are absent.
 
 ### Display
 - Sort the board by the **conservative score μ − 3σ** (players only rise once the
@@ -84,8 +99,10 @@ protect it.
 ## 4. Match formats & best-of-3 — every game is one row
 
 Matches may be different formats (to 15, to 21, best-of-3). **We do not model any of
-this.** Because the rating is binary win/loss (§2), all formats collapse to "one
-team won" and the format differences vanish.
+this with a format field.** The win/loss outcome is format-independent on its own,
+and the margin-of-victory term (§2) stays comparable across formats because every
+game is normalized to a common reference (winner = 21) before the margin is computed
+— the winner's score *is* the target, so the format is inferred, not stored.
 
 **Decision: every game is ONE row.** A best-of-3 is simply logged as 2–3 ordinary
 game rows between the same teams on the same date. There is **no "series" concept**
@@ -93,10 +110,10 @@ in the schema or UI — building one would be machinery for a format we rarely p
 Logging a best-of-3 as separate rows is identical to logging three pickup games
 back-to-back, which is the natural thing anyway.
 
-- Rate each row on win/loss.
+- Rate each row on its winner; use the margin when both scores are present (§2).
 - **Store the score when it's handy** (makes the public history more interesting and
-  keeps margin on the table for a possible future change) — but the rating **ignores
-  it**. Score is optional on a row.
+  feeds the margin term). Score is **optional** on a row — a row with no score is
+  rated on win/loss alone. Best-of-3 rows are independent single games like any other.
 
 > Mental asterisk (not a v1 task): the games of a real best-of-3 aren't statistically
 > independent, so logging them separately makes σ shrink very slightly faster than

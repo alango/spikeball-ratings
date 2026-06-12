@@ -73,12 +73,52 @@ describe("rebuild — basics", () => {
     for (const id of ROSTER) expect(out[id].lastPlayedDate).toBe("2026-01-01");
   });
 
-  it("ignores the score entirely — only the winner matters (SPEC §2)", () => {
-    // The Game type carries no score by construction; this asserts the contract:
-    // two histories with the same winners are identical regardless of any margin.
-    const a = rebuild(ROSTER, [game(1, "2026-01-01", "a")]);
-    const b = rebuild(ROSTER, [game(1, "2026-01-01", "a")]);
-    expect(a).toEqual(b);
+});
+
+describe("rebuild — margin awareness (SPEC §2)", () => {
+  const scored = (
+    id: number,
+    date: string,
+    winner: "a" | "b",
+    sA: number,
+    sB: number,
+  ): Game => ({ id, playedDate: date, teamA: [1, 2], teamB: [3, 4], winner, scoreA: sA, scoreB: sB });
+
+  it("a game with no scores uses the binary update", () => {
+    const noScore = rebuild(ROSTER, [game(1, "2026-01-01", "a")]);
+    const nulls = rebuild(ROSTER, [
+      { id: 1, playedDate: "2026-01-01", teamA: [1, 2], teamB: [3, 4], winner: "a", scoreA: null, scoreB: null },
+    ]);
+    expect(noScore).toEqual(nulls);
+  });
+
+  it("a close win (within the margin threshold) matches the binary update", () => {
+    // 21–15 → normDiff 6 < MARGIN(10) → factor 1, identical to win/loss only.
+    const binary = rebuild(ROSTER, [game(1, "2026-01-01", "a")]);
+    const close = rebuild(ROSTER, [scored(1, "2026-01-01", "a", 21, 15)]);
+    expect(close[1].mu).toBeCloseTo(binary[1].mu, 10);
+    expect(close[3].mu).toBeCloseTo(binary[3].mu, 10);
+  });
+
+  it("a blowout moves μ more than a close win — winners up more, losers down more", () => {
+    const close = rebuild(ROSTER, [scored(1, "2026-01-01", "a", 21, 19)]);
+    const blowout = rebuild(ROSTER, [scored(1, "2026-01-01", "a", 21, 2)]);
+    expect(blowout[1].mu).toBeGreaterThan(close[1].mu);
+    expect(blowout[3].mu).toBeLessThan(close[3].mu);
+  });
+
+  it("normalizes across formats: a 15–7 win ≈ a 21–10 win", () => {
+    // Both leave the loser at ~48% of the winner — comparable normalized margins.
+    const to21 = rebuild(ROSTER, [scored(1, "2026-01-01", "a", 21, 10)]);
+    const to15 = rebuild(ROSTER, [scored(1, "2026-01-01", "a", 15, 7)]);
+    expect(to15[1].mu).toBeCloseTo(to21[1].mu, 0); // within ~0.5
+  });
+
+  it("ignores scores that contradict the winner (falls back to binary)", () => {
+    // winner 'a' but team A scored fewer points — inconsistent, so no margin.
+    const binary = rebuild(ROSTER, [game(1, "2026-01-01", "a")]);
+    const contradictory = rebuild(ROSTER, [scored(1, "2026-01-01", "a", 5, 21)]);
+    expect(contradictory[1].mu).toBeCloseTo(binary[1].mu, 10);
   });
 });
 
