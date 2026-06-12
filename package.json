@@ -1,0 +1,36 @@
+{
+  "name": "spikeball-ratings",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "db:setup": "node --env-file=.env scripts/migrate.mjs",
+    "seed": "node --env-file=.env scripts/seed.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.0",
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "eslint": "^9.17.0",
+    "postcss": "^8.5.15",
+    "tailwindcss": "^4.3.0",
+    "typescript": "^5.7.0",
+    "typescript-eslint": "^8.18.0",
+    "vitest": "^3.0.0"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.1.0",
+    "next": "^16.2.9",
+    "openskill": "^5.0.1",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  }
+}
