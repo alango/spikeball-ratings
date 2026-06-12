@@ -69,10 +69,16 @@ more (up to ~3.5×).
 
 ### Display
 - Sort the board by the **conservative score μ − 3σ** (players only rise once the
-  system is confident, not just lucky).
-- Show a **"provisional" tag** until σ falls below a threshold (e.g. ~60% of the
-  initial σ — tunable). Provisional players can be shown but visually marked.
-- Show μ (or μ−3σ) as the number; a readable history is the other public view.
+  system is confident, not just lucky), shown on an Elo-like scale (~1500 center,
+  ~200 points per σ; a brand-new player reads 1500).
+- Show a **"provisional" tag** until a player has played a **minimum number of games**
+  (tuned to 5). Provisional players are still shown but visually marked.
+  - *Why games, not σ:* the original plan keyed provisional off σ (~60% of initial σ),
+    but openskill's σ shrinks so slowly under repeated play that that threshold is
+    effectively unreachable (~400 games) and any reachable σ-fraction is hypersensitive
+    to inactivity drift. A game count is intuitive and stable. Drift still does its job
+    on the *rating* (μ−3σ sinks for the inactive); it just no longer drives the tag.
+- Show μ−3σ (Elo-scaled) as the number; a readable history is the other public view.
 
 ---
 

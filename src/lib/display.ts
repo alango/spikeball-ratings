@@ -30,12 +30,10 @@ export const ELO_PER_SIGMA = 200;
 export const ELO_TARGET = 1500;
 export const ELO_ALPHA = ELO_PER_SIGMA / DEFAULT_SIGMA;
 
-/**
- * A player is "provisional" until σ falls below this fraction of the initial σ
- * (SPEC §2) — tunable. They can be shown but should be visually marked.
- */
-export const PROVISIONAL_SIGMA_FRACTION = 0.6;
-export const PROVISIONAL_SIGMA = PROVISIONAL_SIGMA_FRACTION * DEFAULT_SIGMA;
+// NOTE: "provisional" is decided by games played, not σ — see views.ts. openskill's
+// σ shrinks so slowly under repeated play that any σ-fraction threshold is either
+// unreachable (~400 games for 0.6·σ₀) or hypersensitive to drift, so a game count
+// is the robust knob (SPEC §2).
 
 export interface BoardEntry {
   id: PlayerId;
@@ -44,7 +42,6 @@ export interface BoardEntry {
   sigma: number;
   /** Conservative score (μ − 3σ) on an Elo-like scale (~1500 center). Sort key. */
   conservative: number;
-  provisional: boolean;
   lastPlayedDate: string | null;
 }
 
@@ -72,7 +69,6 @@ export function displayBoard(
         { mu: r.mu, sigma },
         { z: DISPLAY_Z, alpha: ELO_ALPHA, target: ELO_TARGET },
       ),
-      provisional: sigma >= PROVISIONAL_SIGMA,
       lastPlayedDate: r.lastPlayedDate,
     };
   });

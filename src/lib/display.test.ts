@@ -1,11 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  displayBoard,
-  PROVISIONAL_SIGMA,
-  DISPLAY_Z,
-  ELO_ALPHA,
-  ELO_TARGET,
-} from "./display";
+import { displayBoard, DISPLAY_Z, ELO_ALPHA, ELO_TARGET } from "./display";
 import { DEFAULT_MU, DEFAULT_SIGMA } from "./rating";
 import type { RatingResults } from "./types";
 
@@ -38,7 +32,6 @@ describe("displayBoard — conservative score & sorting", () => {
     expect(board[1].id).toBe(2);
     expect(board[1].sigma).toBeCloseTo(DEFAULT_SIGMA, 10); // no drift applied
     expect(board[1].conservative).toBeCloseTo(ELO_TARGET, 6);
-    expect(board[1].provisional).toBe(true);
   });
 });
 
@@ -52,24 +45,5 @@ describe("displayBoard — inactive players sink over time with no new game (SPE
     expect(later.sigma).toBeGreaterThan(soon.sigma); // σ inflated more by today
     expect(later.conservative).toBeLessThan(soon.conservative); // μ−3σ sinks
     expect(later.mu).toBe(soon.mu); // μ unchanged — drift touches σ only
-  });
-});
-
-describe("displayBoard — provisional flag flips as σ falls (SPEC §2)", () => {
-  it("settled player below the threshold is not provisional", () => {
-    const results: RatingResults = {
-      1: { mu: 30, sigma: PROVISIONAL_SIGMA - 0.5, lastPlayedDate: "2026-06-01" },
-    };
-    expect(displayBoard(results, "2026-06-01")[0].provisional).toBe(false);
-  });
-
-  it("a settled player who drifts back up becomes provisional again", () => {
-    const results: RatingResults = {
-      1: { mu: 30, sigma: PROVISIONAL_SIGMA - 0.5, lastPlayedDate: "2026-01-01" },
-    };
-    // Right after their last game: not provisional. Long after: drifted past the
-    // threshold, provisional again.
-    expect(displayBoard(results, "2026-01-01")[0].provisional).toBe(false);
-    expect(displayBoard(results, "2027-01-01")[0].provisional).toBe(true);
   });
 });

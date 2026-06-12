@@ -5,6 +5,13 @@ import type { BoardEntry } from "./display";
 import type { GameRow } from "./db";
 import type { Player, PlayerId } from "./types";
 
+/**
+ * A player is "provisional" until they've played this many games (SPEC §2). A game
+ * count is used rather than a σ threshold because openskill's σ barely shrinks under
+ * repeated play (see display.ts) — a count is intuitive and stable against drift.
+ */
+export const PROVISIONAL_MIN_GAMES = 5;
+
 export type NameMap = Record<PlayerId, string>;
 
 export function nameMap(players: Player[]): NameMap {
@@ -57,16 +64,20 @@ export function boardView(
   names: NameMap,
   records: Record<PlayerId, PlayerRecord>,
 ): Standing[] {
-  return entries.map((e, i) => ({
-    rank: i + 1,
-    id: e.id,
-    name: names[e.id] ?? `#${e.id}`,
-    rating: Math.round(e.conservative),
-    provisional: e.provisional,
-    wins: records[e.id]?.wins ?? 0,
-    losses: records[e.id]?.losses ?? 0,
-    lastPlayedDate: e.lastPlayedDate,
-  }));
+  return entries.map((e, i) => {
+    const wins = records[e.id]?.wins ?? 0;
+    const losses = records[e.id]?.losses ?? 0;
+    return {
+      rank: i + 1,
+      id: e.id,
+      name: names[e.id] ?? `#${e.id}`,
+      rating: Math.round(e.conservative),
+      provisional: wins + losses < PROVISIONAL_MIN_GAMES,
+      wins,
+      losses,
+      lastPlayedDate: e.lastPlayedDate,
+    };
+  });
 }
 
 // ---- History view -----------------------------------------------------------
