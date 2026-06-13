@@ -15,7 +15,7 @@ import {
   type GameView,
   type Player,
 } from "../_lib/api";
-import { Notice, teamName } from "../_components/ui";
+import { Notice, teamName, formatDate } from "../_components/ui";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -67,6 +67,14 @@ export default function AdminPage() {
     }
   }
 
+  function lock() {
+    localStorage.removeItem("adminPin");
+    setPin("");
+    setAuthed(false);
+    setMsg(null);
+    setErr(null);
+  }
+
   if (checking) return <p className="text-sm text-slate-400">Checking…</p>;
 
   if (!authed) {
@@ -94,7 +102,12 @@ export default function AdminPage() {
 
   return (
     <div className="space-y-8">
-      <h1 className="text-xl font-semibold">Admin</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-semibold">Admin</h1>
+        <button onClick={lock} className="text-sm text-slate-500 hover:text-slate-900">
+          Lock
+        </button>
+      </div>
       {err && <Notice kind="error">{err}</Notice>}
       {msg && <Notice kind="info">{msg}</Notice>}
 
@@ -308,7 +321,9 @@ function GameForm({
               key={g.id}
               className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
             >
-              <span className="w-20 shrink-0 text-xs text-slate-400">{g.playedDate}</span>
+              <span className="w-24 shrink-0 whitespace-nowrap text-xs text-slate-400">
+                {formatDate(g.playedDate)}
+              </span>
               <span className={aWon ? "font-semibold" : "text-slate-500"}>
                 {teamName(g.teamA)}
               </span>

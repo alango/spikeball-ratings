@@ -2,7 +2,7 @@
 
 import { usePoll } from "./_lib/usePoll";
 import { getBoard, getHistory } from "./_lib/api";
-import { Notice, ProvisionalBadge, teamName } from "./_components/ui";
+import { Notice, ProvisionalBadge, teamName, formatDate } from "./_components/ui";
 
 export default function HomePage() {
   const board = usePoll(getBoard);
@@ -37,7 +37,9 @@ function Leaderboard({ data }: { data: Awaited<ReturnType<typeof getBoard>> | nu
           <tr>
             <th className="px-3 py-2 w-10">#</th>
             <th className="px-3 py-2">Player</th>
-            <th className="px-3 py-2 text-right">Rating</th>
+            <th className="px-3 py-2 text-right" title="Elo-like skill score (~1500 = a new player)">
+              Rating
+            </th>
             <th className="px-3 py-2 text-right">W–L</th>
           </tr>
         </thead>
@@ -73,9 +75,11 @@ function History({ data }: { data: Awaited<ReturnType<typeof getHistory>> | null
         return (
           <li
             key={g.id}
-            className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+            className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
           >
-            <span className="w-20 shrink-0 text-xs text-slate-400">{g.playedDate}</span>
+            <span className="w-24 shrink-0 whitespace-nowrap text-xs text-slate-400">
+              {formatDate(g.playedDate)}
+            </span>
             <span className={aWon ? "font-semibold" : "text-slate-500"}>
               {teamName(g.teamA)}
             </span>

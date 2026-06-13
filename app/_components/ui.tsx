@@ -11,7 +11,10 @@ export function Notice({ kind, children }: { kind: "info" | "error"; children: R
 
 export function ProvisionalBadge() {
   return (
-    <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-medium text-amber-700">
+    <span
+      title="Provisional — fewer than 5 games played"
+      className="rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-medium text-amber-700"
+    >
       provisional
     </span>
   );
@@ -20,4 +23,13 @@ export function ProvisionalBadge() {
 /** "Alice & Bob" from a two-player team. */
 export function teamName(team: PlayerRef[]): string {
   return team.map((p) => p.name).join(" & ");
+}
+
+/** ISO `YYYY-MM-DD` → "12 Jun 2026" (parsed as a local calendar day). */
+export function formatDate(iso: string): string {
+  return new Date(`${iso}T00:00:00`).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
 }
