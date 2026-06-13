@@ -11,11 +11,7 @@ export default function HomePage() {
   return (
     <div className="space-y-8">
       <section>
-        <h1 className="mb-1 text-xl font-semibold">Leaderboard</h1>
-        <p className="mb-3 text-sm text-slate-500">
-          Ranked by a conservative skill estimate. Inactive players drift down over
-          time.
-        </p>
+        <h1 className="mb-3 text-xl font-semibold">Leaderboard</h1>
         {board.error && <Notice kind="error">{board.error}</Notice>}
         <Leaderboard data={board.data} />
       </section>

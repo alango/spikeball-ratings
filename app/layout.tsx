@@ -3,8 +3,8 @@ import "./globals.css";
 import { Nav } from "./_components/Nav";
 
 export const metadata = {
-  title: "Spikeball League",
-  description: "Ongoing ratings and game history for an ad-hoc 2v2 spikeball league.",
+  title: "Edinburgh Roundnet Ratings",
+  description: "Ongoing ratings and game history for an ad-hoc 2v2 roundnet league.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
