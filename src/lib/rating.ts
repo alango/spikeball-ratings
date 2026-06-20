@@ -32,13 +32,13 @@ export const DEFAULT_SIGMA = 25 / 3;
  *     loserNorm = MARGIN_REFERENCE × loserScore / winnerScore
  *     normDiff  = MARGIN_REFERENCE − loserNorm = MARGIN_REFERENCE × (1 − loser/winner)
  *
- * With MARGIN = 10 on a 21-point reference, amplification only kicks in once the
- * loser falls under ~52% of the winner's score (normDiff > 10) — so competitive
- * games behave exactly like the binary update, and only blowouts move μ more (up to
- * ~3.5×). A game with a missing score falls back to the binary update.
+ * With MARGIN = 8 on a 21-point reference, amplification only kicks in once the
+ * loser falls under ~62% of the winner's score (normDiff > 8) — so competitive
+ * games behave exactly like the binary update, and only one-sided games move μ more
+ * (up to ~3.6×). A game with a missing score falls back to the binary update.
  */
 export const MARGIN_REFERENCE = 21;
-export const MARGIN = 10;
+export const MARGIN = 8;
 
 /**
  * Inactivity drift tuning (SPEC §5), deliberately MILD to start. Variance grows

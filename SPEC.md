@@ -49,7 +49,7 @@ matters for something left running indefinitely). Do NOT hand-roll the rating ma
 The **winner is authoritative** — that is always what the update is built on. When
 both scores are recorded, the update is additionally **margin-aware**: a blowout
 moves μ more than a squeaker. openskill amplifies the μ change by
-`1 + ln(1 + max(0, |Δscore| − MARGIN))` (`MARGIN` tuned to 10); σ and the drift are
+`1 + ln(1 + max(0, |Δscore| − MARGIN))` (`MARGIN` tuned to 8); σ and the drift are
 untouched. A game logged **without scores falls back to a pure win/loss update**, so
 scores stay genuinely optional.
 
@@ -57,10 +57,10 @@ scores stay genuinely optional.
 model only single games, so the winner's score *is* the target (to-15, to-21, …).
 Before computing the margin we scale every game onto a common reference
 (winner = 21), which makes margins comparable across formats automatically — no
-format field, no game-type detection (see §4). With `MARGIN = 10` on that reference,
-amplification only begins once the loser falls under ~52% of the winner's score, so
-competitive games behave exactly like the old binary update and only blowouts move
-more (up to ~3.5×).
+format field, no game-type detection (see §4). With `MARGIN = 8` on that reference,
+amplification only begins once the loser falls under ~62% of the winner's score, so
+competitive games behave exactly like the old binary update and only one-sided games
+move more (up to ~3.6×).
 
 > Historical note: v1 was *strictly* win/loss (margin deliberately discarded for
 > simplicity). Margin awareness was added later once score normalization made it

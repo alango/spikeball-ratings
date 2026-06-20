@@ -93,7 +93,7 @@ describe("rebuild — margin awareness (SPEC §2)", () => {
   });
 
   it("a close win (within the margin threshold) matches the binary update", () => {
-    // 21–15 → normDiff 6 < MARGIN(10) → factor 1, identical to win/loss only.
+    // 21–15 → normDiff 6 < MARGIN(8) → factor 1, identical to win/loss only.
     const binary = rebuild(ROSTER, [game(1, "2026-01-01", "a")]);
     const close = rebuild(ROSTER, [scored(1, "2026-01-01", "a", 21, 15)]);
     expect(close[1].mu).toBeCloseTo(binary[1].mu, 10);
