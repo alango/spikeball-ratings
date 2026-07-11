@@ -72,6 +72,10 @@ function History({ data }: { data: Awaited<ReturnType<typeof getHistory>> | null
     <ul className="space-y-2">
       {data.games.map((g) => {
         const aWon = g.winner === "a";
+        const winTeam = aWon ? g.teamA : g.teamB;
+        const loseTeam = aWon ? g.teamB : g.teamA;
+        const winScore = aWon ? g.scoreA : g.scoreB;
+        const loseScore = aWon ? g.scoreB : g.scoreA;
         return (
           <li
             key={g.id}
@@ -80,16 +84,12 @@ function History({ data }: { data: Awaited<ReturnType<typeof getHistory>> | null
             <span className="w-24 shrink-0 whitespace-nowrap text-xs text-slate-400">
               {formatDate(g.playedDate)}
             </span>
-            <span className={aWon ? "font-semibold" : "text-slate-500"}>
-              {teamName(g.teamA)}
-            </span>
+            <span className="font-semibold">{teamName(winTeam)}</span>
             <span className="text-slate-400">vs</span>
-            <span className={!aWon ? "font-semibold" : "text-slate-500"}>
-              {teamName(g.teamB)}
-            </span>
-            {g.scoreA !== null && g.scoreB !== null && (
+            <span className="text-slate-500">{teamName(loseTeam)}</span>
+            {winScore !== null && loseScore !== null && (
               <span className="ml-auto tabular-nums text-slate-500">
-                {g.scoreA}–{g.scoreB}
+                {winScore}–{loseScore}
               </span>
             )}
           </li>

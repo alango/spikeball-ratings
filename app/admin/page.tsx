@@ -338,6 +338,10 @@ function GameForm({
       <ul className="space-y-2">
         {games.map((g) => {
           const aWon = g.winner === "a";
+          const winTeam = aWon ? g.teamA : g.teamB;
+          const loseTeam = aWon ? g.teamB : g.teamA;
+          const winScore = aWon ? g.scoreA : g.scoreB;
+          const loseScore = aWon ? g.scoreB : g.scoreA;
           return (
             <li
               key={g.id}
@@ -346,19 +350,17 @@ function GameForm({
               <span className="w-24 shrink-0 whitespace-nowrap text-xs text-slate-400">
                 {formatDate(g.playedDate)}
               </span>
-              <span className={aWon ? "font-semibold" : "text-slate-500"}>
-                {teamName(g.teamA)}
+              <span className="flex flex-1 flex-wrap items-center gap-x-2 gap-y-1">
+                <span className="font-semibold">{teamName(winTeam)}</span>
+                <span className="text-slate-400">vs</span>
+                <span className="text-slate-500">{teamName(loseTeam)}</span>
               </span>
-              <span className="text-slate-400">vs</span>
-              <span className={!aWon ? "font-semibold" : "text-slate-500"}>
-                {teamName(g.teamB)}
+              <span className="w-14 shrink-0 text-right tabular-nums text-slate-500">
+                {winScore !== null && loseScore !== null
+                  ? `${winScore}–${loseScore}`
+                  : ""}
               </span>
-              {g.scoreA !== null && g.scoreB !== null && (
-                <span className="tabular-nums text-slate-500">
-                  {g.scoreA}–{g.scoreB}
-                </span>
-              )}
-              <span className="ml-auto flex gap-2">
+              <span className="flex gap-2">
                 <button
                   onClick={() => loadForEdit(g)}
                   className="text-slate-500 hover:text-slate-900"
