@@ -215,6 +215,7 @@ function GameForm({
 
   // Disable already-picked players in the other dropdowns.
   const chosen = new Set(slots.filter((s) => s !== "") as number[]);
+  const sortedPlayers = [...players].sort((a, b) => a.name.localeCompare(b.name));
   const picker = (i: number) => (
     <select
       value={slots[i]}
@@ -222,7 +223,7 @@ function GameForm({
       className="rounded-md border border-slate-300 px-2 py-1.5 text-sm"
     >
       <option value="">— player —</option>
-      {players.map((p) => (
+      {sortedPlayers.map((p) => (
         <option key={p.id} value={p.id} disabled={chosen.has(p.id) && slots[i] !== p.id}>
           {p.name}
         </option>
@@ -292,7 +293,7 @@ function GameForm({
             placeholder="B"
             className="w-16 rounded-md border border-slate-300 px-2 py-1.5"
           />
-          <span className="text-xs text-slate-400">(optional — rating ignores it)</span>
+          <span className="text-xs text-slate-400">(optional)</span>
         </div>
 
         <div className="flex gap-2">
