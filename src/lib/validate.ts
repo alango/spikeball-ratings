@@ -72,6 +72,16 @@ export function validateGameInput(
   if ((scoreA === null) !== (scoreB === null)) {
     return { ok: false, error: "provide both scores or neither" };
   }
+  // When scores are present, the winner's score must be strictly higher — otherwise
+  // the row contradicts the authoritative winner (a likely typo). The rating layer
+  // silently discards such a margin, so catch it here instead of storing the row.
+  if (scoreA !== null && scoreB !== null) {
+    const winScore = raw.winner === "a" ? scoreA : scoreB;
+    const loseScore = raw.winner === "a" ? scoreB : scoreA;
+    if (winScore <= loseScore) {
+      return { ok: false, error: "the winning team's score must be higher" };
+    }
+  }
   return {
     ok: true,
     value: { playedDate: raw.playedDate, teamA, teamB, winner: raw.winner, scoreA, scoreB },

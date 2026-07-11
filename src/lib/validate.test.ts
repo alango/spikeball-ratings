@@ -57,6 +57,14 @@ describe("validateGameInput", () => {
     expect(validateGameInput({ ...base, scoreA: 1.5 }, ROSTER).ok).toBe(false);
   });
 
+  it("rejects a score that contradicts the winner", () => {
+    // winner 'a' but team A scored fewer (or equal) points.
+    expect(validateGameInput({ ...base, scoreA: 15, scoreB: 21 }, ROSTER).ok).toBe(false);
+    expect(validateGameInput({ ...base, scoreA: 21, scoreB: 21 }, ROSTER).ok).toBe(false);
+    // Consistent with winner 'b'.
+    expect(validateGameInput({ ...base, winner: "b", scoreA: 15, scoreB: 21 }, ROSTER).ok).toBe(true);
+  });
+
   it("rejects malformed teams", () => {
     expect(validateGameInput({ ...base, teamA: [1] }, ROSTER).ok).toBe(false);
     expect(validateGameInput({ ...base, teamA: "1,2" }, ROSTER).ok).toBe(false);

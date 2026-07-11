@@ -216,6 +216,16 @@ function GameForm({
   // Disable already-picked players in the other dropdowns.
   const chosen = new Set(slots.filter((s) => s !== "") as number[]);
   const sortedPlayers = [...players].sort((a, b) => a.name.localeCompare(b.name));
+
+  // Flag a score that contradicts the winner radio (both present, winner not ahead).
+  const nA = scoreA === "" ? null : Number(scoreA);
+  const nB = scoreB === "" ? null : Number(scoreB);
+  const scoreMismatch =
+    nA !== null &&
+    nB !== null &&
+    !Number.isNaN(nA) &&
+    !Number.isNaN(nB) &&
+    (winner === "a" ? nA <= nB : nB <= nA);
   const picker = (i: number) => (
     <select
       value={slots[i]}
@@ -283,7 +293,9 @@ function GameForm({
             value={scoreA}
             onChange={(e) => setScoreA(e.target.value)}
             placeholder="A"
-            className="w-16 rounded-md border border-slate-300 px-2 py-1.5"
+            className={`w-16 rounded-md border px-2 py-1.5 ${
+              scoreMismatch ? "border-red-400 bg-red-50" : "border-slate-300"
+            }`}
           />
           <span className="text-slate-400">–</span>
           <input
@@ -291,15 +303,24 @@ function GameForm({
             value={scoreB}
             onChange={(e) => setScoreB(e.target.value)}
             placeholder="B"
-            className="w-16 rounded-md border border-slate-300 px-2 py-1.5"
+            className={`w-16 rounded-md border px-2 py-1.5 ${
+              scoreMismatch ? "border-red-400 bg-red-50" : "border-slate-300"
+            }`}
           />
-          <span className="text-xs text-slate-400">(optional)</span>
+          {scoreMismatch ? (
+            <span className="text-xs text-red-600">
+              winner’s score must be higher
+            </span>
+          ) : (
+            <span className="text-xs text-slate-400">(optional)</span>
+          )}
         </div>
 
         <div className="flex gap-2">
           <button
             onClick={submit}
-            className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white"
+            disabled={scoreMismatch}
+            className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-40"
           >
             {editingId === null ? "Log game" : "Save changes"}
           </button>
