@@ -70,15 +70,54 @@ export function driftSigma(sigma: number, gapDays: number): number {
 }
 
 /**
+ * Per-game rating change for one player: (μ, σ) immediately BEFORE this game's
+ * openskill update (already drift-inflated for the player's idle gap) and AFTER it.
+ * The display layer turns these into a single Elo-scale delta for the history hover.
+ * Measured across the game update ONLY — idle drift is a separate time effect and is
+ * deliberately excluded from "what this game did".
+ */
+export interface GameDelta {
+  muBefore: number;
+  sigmaBefore: number;
+  muAfter: number;
+  sigmaAfter: number;
+}
+
+/** deltas[gameId][playerId] for the four players in each game. */
+export type GameDeltas = Record<number, Record<PlayerId, GameDelta>>;
+
+/**
  * Replay-rebuild every rating from scratch (SPEC §3). Given the roster and the
  * full game history, returns each player's (μ, σ, lastPlayedDate) as of their last
  * game. Every roster player appears in the result; one who has never played gets
  * the defaults with `lastPlayedDate: null`.
  */
 export function rebuild(roster: PlayerId[], games: Game[]): RatingResults {
+  return replay(roster, games, false).results;
+}
+
+/**
+ * As `rebuild`, but also captures each game's per-player (μ, σ) before→after the
+ * update (see `GameDelta`). Same replay, so the ratings are identical to `rebuild`;
+ * the history read path uses this to show a rating gain/loss per player per game.
+ * Not persisted — recomputed on read (cheap at league scale, no schema change).
+ */
+export function rebuildWithDeltas(
+  roster: PlayerId[],
+  games: Game[],
+): { results: RatingResults; deltas: GameDeltas } {
+  return replay(roster, games, true);
+}
+
+function replay(
+  roster: PlayerId[],
+  games: Game[],
+  collectDeltas: boolean,
+): { results: RatingResults; deltas: GameDeltas } {
   // Mutable working state, keyed by player id.
   const cur = new Map<PlayerId, Rating>();
   const lastPlayed = new Map<PlayerId, string>();
+  const deltas: GameDeltas = {};
 
   const get = (id: PlayerId): Rating => {
     let r = cur.get(id);
@@ -136,6 +175,24 @@ export function rebuild(roster: PlayerId[], games: Game[]): RatingResults {
         })
       : rate([winTeam, loseTeam], { tau: 0 });
 
+    if (collectDeltas) {
+      // `before` is the post-drift, pre-update rating still held in winTeam/loseTeam.
+      const gd: Record<PlayerId, GameDelta> = {};
+      const record = (id: PlayerId, before: Rating, after: Rating) => {
+        gd[id] = {
+          muBefore: before.mu,
+          sigmaBefore: before.sigma,
+          muAfter: after.mu,
+          sigmaAfter: after.sigma,
+        };
+      };
+      record(winId[0], winTeam[0], newWin[0]);
+      record(winId[1], winTeam[1], newWin[1]);
+      record(loseId[0], loseTeam[0], newLose[0]);
+      record(loseId[1], loseTeam[1], newLose[1]);
+      deltas[g.id] = gd;
+    }
+
     cur.set(winId[0], newWin[0]);
     cur.set(winId[1], newWin[1]);
     cur.set(loseId[0], newLose[0]);
@@ -144,13 +201,13 @@ export function rebuild(roster: PlayerId[], games: Game[]): RatingResults {
     for (const id of ids) lastPlayed.set(id, g.playedDate);
   }
 
-  const out: RatingResults = {};
+  const results: RatingResults = {};
   for (const [id, r] of cur) {
-    out[id] = {
+    results[id] = {
       mu: r.mu,
       sigma: r.sigma,
       lastPlayedDate: lastPlayed.get(id) ?? null,
     };
   }
-  return out;
+  return { results, deltas };
 }

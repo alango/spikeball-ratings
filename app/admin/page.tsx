@@ -15,7 +15,7 @@ import {
   type GameView,
   type Player,
 } from "../_lib/api";
-import { Notice, teamName, formatDate } from "../_components/ui";
+import { Notice, TeamNames, formatDate } from "../_components/ui";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -351,9 +351,13 @@ function GameForm({
                 {formatDate(g.playedDate)}
               </span>
               <span className="flex flex-1 flex-wrap items-center gap-x-2 gap-y-1">
-                <span className="font-semibold">{teamName(winTeam)}</span>
+                <span className="font-semibold">
+                  <TeamNames team={winTeam} />
+                </span>
                 <span className="text-slate-400">vs</span>
-                <span className="text-slate-500">{teamName(loseTeam)}</span>
+                <span className="text-slate-500">
+                  <TeamNames team={loseTeam} />
+                </span>
               </span>
               <span className="w-14 shrink-0 text-right tabular-nums text-slate-500">
                 {winScore !== null && loseScore !== null

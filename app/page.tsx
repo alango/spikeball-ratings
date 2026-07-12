@@ -2,7 +2,7 @@
 
 import { usePoll } from "./_lib/usePoll";
 import { getBoard, getHistory } from "./_lib/api";
-import { Notice, ProvisionalBadge, teamName, formatDate } from "./_components/ui";
+import { Notice, ProvisionalBadge, TeamNames, formatDate } from "./_components/ui";
 
 export default function HomePage() {
   const board = usePoll(getBoard);
@@ -84,9 +84,13 @@ function History({ data }: { data: Awaited<ReturnType<typeof getHistory>> | null
             <span className="w-24 shrink-0 whitespace-nowrap text-xs text-slate-400">
               {formatDate(g.playedDate)}
             </span>
-            <span className="font-semibold">{teamName(winTeam)}</span>
+            <span className="font-semibold">
+              <TeamNames team={winTeam} />
+            </span>
             <span className="text-slate-400">vs</span>
-            <span className="text-slate-500">{teamName(loseTeam)}</span>
+            <span className="text-slate-500">
+              <TeamNames team={loseTeam} />
+            </span>
             {winScore !== null && loseScore !== null && (
               <span className="ml-auto tabular-nums text-slate-500">
                 {winScore}–{loseScore}

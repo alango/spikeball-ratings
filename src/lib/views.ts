@@ -1,8 +1,10 @@
 // Presenters: turn DB rows + rebuilt ratings into name-resolved JSON for the public
 // reads. Kept here so the route handlers stay thin and the shapes are defined once.
 
+import { eloDelta } from "./display";
 import type { BoardEntry } from "./display";
 import type { GameRow } from "./db";
+import type { GameDeltas } from "./rating";
 import type { Player, PlayerId } from "./types";
 
 /**
@@ -20,7 +22,11 @@ export function nameMap(players: Player[]): NameMap {
   return m;
 }
 
-const playerRef = (id: PlayerId, names: NameMap) => ({ id, name: names[id] ?? `#${id}` });
+const playerRef = (id: PlayerId, names: NameMap, ratingDelta: number | null = null) => ({
+  id,
+  name: names[id] ?? `#${id}`,
+  ratingDelta,
+});
 
 // ---- Win/loss record (from history, win/loss only — SPEC §2) ----------------
 
@@ -92,8 +98,20 @@ export interface GameView {
   scoreB: number | null;
 }
 
-/** Games newest-first for the public history (by played_date desc, id desc). */
-export function historyView(games: GameRow[], names: NameMap): GameView[] {
+/**
+ * Games newest-first for the public history (by played_date desc, id desc). When
+ * `deltas` is supplied (from `rebuildWithDeltas`), each player carries the rating
+ * gain/loss that game produced (`ratingDelta`) for the history hover; otherwise null.
+ */
+export function historyView(
+  games: GameRow[],
+  names: NameMap,
+  deltas?: GameDeltas,
+): GameView[] {
+  const deltaFor = (gameId: number, id: PlayerId): number | null => {
+    const d = deltas?.[gameId]?.[id];
+    return d ? eloDelta(d) : null;
+  };
   return [...games]
     .sort((a, b) =>
       a.playedDate > b.playedDate ? -1 : a.playedDate < b.playedDate ? 1 : b.id - a.id,
@@ -101,8 +119,8 @@ export function historyView(games: GameRow[], names: NameMap): GameView[] {
     .map((g) => ({
       id: g.id,
       playedDate: g.playedDate,
-      teamA: g.teamA.map((id) => playerRef(id, names)),
-      teamB: g.teamB.map((id) => playerRef(id, names)),
+      teamA: g.teamA.map((id) => playerRef(id, names, deltaFor(g.id, id))),
+      teamB: g.teamB.map((id) => playerRef(id, names, deltaFor(g.id, id))),
       winner: g.winner,
       scoreA: g.scoreA,
       scoreB: g.scoreB,

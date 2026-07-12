@@ -8,6 +8,8 @@ export interface Player {
 export interface PlayerRef {
   id: number;
   name: string;
+  /** Elo-scale rating change this player got from this game (null if unavailable). */
+  ratingDelta: number | null;
 }
 
 export interface Standing {

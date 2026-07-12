@@ -13,6 +13,7 @@ import {
   daysBetween,
   driftSigma,
 } from "./rating";
+import type { GameDelta } from "./rating";
 import type { PlayerId, RatingResults } from "./types";
 
 /** Conservative score is μ − Zσ; Z=3 ≈ 99.7% confidence (SPEC §2). */
@@ -29,6 +30,29 @@ export const DISPLAY_Z = 3;
 export const ELO_PER_SIGMA = 200;
 export const ELO_TARGET = 1500;
 export const ELO_ALPHA = ELO_PER_SIGMA / DEFAULT_SIGMA;
+
+/** Conservative score (μ − 3σ) on the Elo-like scale — the number shown to users. */
+export function eloScore(mu: number, sigma: number): number {
+  return ordinal(
+    { mu, sigma },
+    { z: DISPLAY_Z, alpha: ELO_ALPHA, target: ELO_TARGET },
+  );
+}
+
+/**
+ * A single game's effect on a player's displayed rating: the change in Elo-scale
+ * conservative score across that game's update (μ moves, σ shrinks — both count),
+ * rounded to whole points to match the board. Positive for the winners.
+ *
+ * NOTE: these are point-in-time snapshots and do NOT sum to a player's current board
+ * rating — the board keeps drifting toward today after the last game, and the score
+ * is non-linear in σ. It answers "what did this game do", not "how did I get here".
+ */
+export function eloDelta(d: GameDelta): number {
+  return Math.round(
+    eloScore(d.muAfter, d.sigmaAfter) - eloScore(d.muBefore, d.sigmaBefore),
+  );
+}
 
 // NOTE: "provisional" is decided by games played, not σ — see views.ts. openskill's
 // σ shrinks so slowly under repeated play that any σ-fraction threshold is either
@@ -65,10 +89,7 @@ export function displayBoard(
       id,
       mu: r.mu,
       sigma,
-      conservative: ordinal(
-        { mu: r.mu, sigma },
-        { z: DISPLAY_Z, alpha: ELO_ALPHA, target: ELO_TARGET },
-      ),
+      conservative: eloScore(r.mu, sigma),
       lastPlayedDate: r.lastPlayedDate,
     };
   });

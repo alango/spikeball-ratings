@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   rebuild,
+  rebuildWithDeltas,
   driftSigma,
   daysBetween,
   DEFAULT_MU,
@@ -119,6 +120,38 @@ describe("rebuild — margin awareness (SPEC §2)", () => {
     const binary = rebuild(ROSTER, [game(1, "2026-01-01", "a")]);
     const contradictory = rebuild(ROSTER, [scored(1, "2026-01-01", "a", 5, 21)]);
     expect(contradictory[1].mu).toBeCloseTo(binary[1].mu, 10);
+  });
+});
+
+describe("rebuildWithDeltas — per-game before/after captured for the history hover", () => {
+  it("produces the exact same ratings as rebuild", () => {
+    const games: Game[] = [
+      game(1, "2026-01-01", "a"),
+      game(2, "2026-01-20", "b"),
+      game(3, "2026-02-01", "a"),
+    ];
+    expect(rebuildWithDeltas(ROSTER, games).results).toEqual(rebuild(ROSTER, games));
+  });
+
+  it("records all four players of a game; winners' μ rises, losers' μ falls", () => {
+    const { deltas } = rebuildWithDeltas(ROSTER, [game(1, "2026-01-01", "a")]);
+    const d = deltas[1];
+    expect(Object.keys(d).map(Number).sort()).toEqual([1, 2, 3, 4]);
+    // Team A won.
+    for (const id of [1, 2]) expect(d[id].muAfter).toBeGreaterThan(d[id].muBefore);
+    for (const id of [3, 4]) expect(d[id].muAfter).toBeLessThan(d[id].muBefore);
+    // Every player's σ shrinks from a played game.
+    for (const id of ROSTER) expect(d[id].sigmaAfter).toBeLessThan(d[id].sigmaBefore);
+  });
+
+  it("`before` reflects idle drift: a returning player enters a game more uncertain", () => {
+    const games: Game[] = [
+      game(1, "2026-01-01", "a"),
+      game(2, "2026-06-01", "a"), // ~5 months later — player 1 drifted while idle
+    ];
+    const { deltas } = rebuildWithDeltas(ROSTER, games);
+    // The second game's `before` σ for player 1 exceeds their `after` σ from game 1.
+    expect(deltas[2][1].sigmaBefore).toBeGreaterThan(deltas[1][1].sigmaAfter);
   });
 });
 

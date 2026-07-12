@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { boardView, recordMap, PROVISIONAL_MIN_GAMES, nameMap } from "./views";
+import { boardView, historyView, recordMap, PROVISIONAL_MIN_GAMES, nameMap } from "./views";
 import type { BoardEntry } from "./display";
 import type { GameRow } from "./db";
+import type { GameDeltas } from "./rating";
 import type { Player } from "./types";
 
 const entry = (id: number, conservative: number): BoardEntry => ({
@@ -27,6 +28,32 @@ describe("recordMap", () => {
     expect(rec[1]).toEqual({ wins: 1, losses: 1 });
     expect(rec[2]).toEqual({ wins: 2, losses: 0 });
     expect(rec[4]).toEqual({ wins: 1, losses: 1 });
+  });
+});
+
+describe("historyView — rating deltas threaded onto each player", () => {
+  const games: GameRow[] = [
+    { id: 1, playedDate: "2026-06-01", teamA: [1, 2], teamB: [3, 4], winner: "a", scoreA: 21, scoreB: 5 },
+  ];
+  const names = nameMap([...players, { id: 3, name: "Cara" }, { id: 4, name: "Dan" }]);
+
+  it("maps the Elo-scale delta onto the matching player, null when absent", () => {
+    // muAfter > muBefore with σ shrinking -> a clear positive Elo delta for id 1.
+    const deltas: GameDeltas = {
+      1: {
+        1: { muBefore: 25, sigmaBefore: 8, muAfter: 27, sigmaAfter: 7 },
+      },
+    };
+    const [g] = historyView(games, names, deltas);
+    expect(g.teamA[0]).toMatchObject({ id: 1, ratingDelta: expect.any(Number) });
+    expect(g.teamA[0].ratingDelta).toBeGreaterThan(0);
+    // No delta supplied for player 2 -> null.
+    expect(g.teamA[1].ratingDelta).toBeNull();
+  });
+
+  it("leaves every ratingDelta null when no deltas are passed", () => {
+    const [g] = historyView(games, names);
+    for (const p of [...g.teamA, ...g.teamB]) expect(p.ratingDelta).toBeNull();
   });
 });
 
