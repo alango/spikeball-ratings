@@ -17,6 +17,14 @@ export interface Standing {
   id: number;
   name: string;
   rating: number;
+  /** Raw openskill μ (drift-adjusted) — shown in the rating-breakdown hover. */
+  mu: number;
+  /** Raw openskill σ (drift-adjusted) — shown in the rating-breakdown hover. */
+  sigma: number;
+  /** Rating if fully certain (σ→0). `ceiling − uncertainty === rating`. */
+  ceiling: number;
+  /** Elo points currently docked for uncertainty (`ceiling − rating`). */
+  uncertainty: number;
   provisional: boolean;
   wins: number;
   losses: number;

@@ -1,7 +1,7 @@
 // Presenters: turn DB rows + rebuilt ratings into name-resolved JSON for the public
 // reads. Kept here so the route handlers stay thin and the shapes are defined once.
 
-import { eloDelta } from "./display";
+import { eloDelta, eloBreakdown } from "./display";
 import type { BoardEntry } from "./display";
 import type { GameRow } from "./db";
 import type { GameDeltas } from "./rating";
@@ -59,6 +59,14 @@ export interface Standing {
   name: string;
   /** Conservative score on an Elo-like scale (~1500 center), drift-adjusted to today. */
   rating: number;
+  /** Raw openskill μ (drift-adjusted, one decimal) — for the rating-breakdown hover. */
+  mu: number;
+  /** Raw openskill σ (drift-adjusted, one decimal) — for the rating-breakdown hover. */
+  sigma: number;
+  /** Rating if fully certain (σ→0), Elo scale. `ceiling − uncertainty === rating`. */
+  ceiling: number;
+  /** Elo points currently docked for uncertainty (`ceiling − rating`). */
+  uncertainty: number;
   provisional: boolean;
   wins: number;
   losses: number;
@@ -73,11 +81,13 @@ export function boardView(
   return entries.map((e, i) => {
     const wins = records[e.id]?.wins ?? 0;
     const losses = records[e.id]?.losses ?? 0;
+    const breakdown = eloBreakdown(e.mu, e.sigma);
     return {
       rank: i + 1,
       id: e.id,
       name: names[e.id] ?? `#${e.id}`,
       rating: Math.round(e.conservative),
+      ...breakdown,
       provisional: wins + losses < PROVISIONAL_MIN_GAMES,
       wins,
       losses,

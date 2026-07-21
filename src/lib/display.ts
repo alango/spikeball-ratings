@@ -40,6 +40,39 @@ export function eloScore(mu: number, sigma: number): number {
 }
 
 /**
+ * The shown rating decomposed for the leaderboard hover, for players who want the
+ * "why is my number this" detail. On the Elo scale the shown (conservative) rating is
+ *
+ *     shown = alpha·(μ − 3σ) + target  =  (alpha·μ + target) − (alpha·z)·σ
+ *             \___ eloScore(μ, σ) ___/     \___ ceiling ___/   \_ penalty _/
+ *
+ * so `ceiling` is the rating a player would have if we were fully certain (σ→0) and
+ * `uncertainty` is the points currently docked for uncertainty (alpha·z·σ = 72σ here).
+ * By construction `ceiling − uncertainty === shown` after rounding — the tooltip adds up.
+ */
+export interface EloBreakdown {
+  /** Raw openskill μ (drift-adjusted), one decimal. */
+  mu: number;
+  /** Raw openskill σ (drift-adjusted), one decimal. */
+  sigma: number;
+  /** Rating if fully certain (σ→0), on the Elo scale. */
+  ceiling: number;
+  /** Elo points docked for uncertainty (`ceiling − shown`). */
+  uncertainty: number;
+}
+
+export function eloBreakdown(mu: number, sigma: number): EloBreakdown {
+  const ceiling = Math.round(eloScore(mu, 0));
+  const shown = Math.round(eloScore(mu, sigma));
+  return {
+    mu: Math.round(mu * 10) / 10,
+    sigma: Math.round(sigma * 10) / 10,
+    ceiling,
+    uncertainty: ceiling - shown,
+  };
+}
+
+/**
  * A single game's effect on a player's displayed rating: the change in Elo-scale
  * conservative score across that game's update (μ moves, σ shrinks — both count),
  * rounded to whole points to match the board. Positive for the winners.

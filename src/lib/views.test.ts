@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { boardView, historyView, recordMap, PROVISIONAL_MIN_GAMES, nameMap } from "./views";
+import { eloScore } from "./display";
 import type { BoardEntry } from "./display";
 import type { GameRow } from "./db";
 import type { GameDeltas } from "./rating";
@@ -68,6 +69,16 @@ describe("boardView — provisional by games played (SPEC §2)", () => {
     const board = boardView(entries, nameMap(players), records);
     expect(board[0]).toMatchObject({ rank: 1, name: "Alice", rating: 1600, provisional: true });
     expect(board[1]).toMatchObject({ rank: 2, name: "Bob", rating: 1400, provisional: false });
+  });
+
+  it("carries the rating breakdown threaded from each entry's μ/σ", () => {
+    // entry() uses μ=25, σ=5; ceiling − uncertainty reconciles to that pair's shown score.
+    const board = boardView([entry(1, 1600)], nameMap(players), { 1: { wins: 6, losses: 0 } });
+    const s = board[0];
+    expect(s.mu).toBe(25);
+    expect(s.sigma).toBe(5);
+    expect(s.uncertainty).toBeGreaterThan(0);
+    expect(s.ceiling - s.uncertainty).toBe(Math.round(eloScore(25, 5)));
   });
 
   it("a player with no games is provisional", () => {

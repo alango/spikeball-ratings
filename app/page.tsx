@@ -2,7 +2,13 @@
 
 import { usePoll } from "./_lib/usePoll";
 import { getBoard, getHistory } from "./_lib/api";
-import { Notice, ProvisionalBadge, TeamNames, formatDate } from "./_components/ui";
+import {
+  Notice,
+  ProvisionalBadge,
+  RatingBreakdown,
+  TeamNames,
+  formatDate,
+} from "./_components/ui";
 
 export default function HomePage() {
   const board = usePoll(getBoard);
@@ -51,7 +57,9 @@ function Leaderboard({ data }: { data: Awaited<ReturnType<typeof getBoard>> | nu
                 <span className="font-medium">{s.name}</span>{" "}
                 {s.provisional && <ProvisionalBadge />}
               </td>
-              <td className="px-3 py-2 text-right tabular-nums">{s.rating}</td>
+              <td className="px-3 py-2 text-right tabular-nums">
+                <RatingBreakdown standing={s} />
+              </td>
               <td className="px-3 py-2 text-right tabular-nums text-slate-500">
                 {s.wins}–{s.losses}
               </td>

@@ -1,7 +1,27 @@
 import { describe, it, expect } from "vitest";
-import { displayBoard, DISPLAY_Z, ELO_ALPHA, ELO_TARGET } from "./display";
+import { displayBoard, eloBreakdown, eloScore, DISPLAY_Z, ELO_ALPHA, ELO_TARGET } from "./display";
 import { DEFAULT_MU, DEFAULT_SIGMA } from "./rating";
 import type { RatingResults } from "./types";
+
+describe("eloBreakdown — ceiling/uncertainty reconcile to the shown rating", () => {
+  it("ceiling − uncertainty equals the shown (conservative) rating", () => {
+    const { ceiling, uncertainty } = eloBreakdown(27, 4.5);
+    const shown = Math.round(eloScore(27, 4.5));
+    expect(ceiling - uncertainty).toBe(shown);
+  });
+
+  it("ceiling is the σ→0 rating and uncertainty grows with σ", () => {
+    const { ceiling } = eloBreakdown(27, 4.5);
+    expect(ceiling).toBe(Math.round(eloScore(27, 0)));
+    expect(eloBreakdown(27, 6).uncertainty).toBeGreaterThan(eloBreakdown(27, 4).uncertainty);
+  });
+
+  it("a brand-new player: ceiling above 1500, docked back down to ~1500", () => {
+    const { ceiling, uncertainty } = eloBreakdown(DEFAULT_MU, DEFAULT_SIGMA);
+    expect(ceiling).toBeGreaterThan(ELO_TARGET);
+    expect(ceiling - uncertainty).toBe(ELO_TARGET);
+  });
+});
 
 describe("displayBoard — conservative score & sorting", () => {
   it("sorts by μ − 3σ desc, ties broken by id", () => {
