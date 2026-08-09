@@ -27,6 +27,10 @@ duplication between them is fine — do not try to share a codebase.
 - Lint: `npm run lint`
 - Typecheck: `npm run typecheck`
 - Apply schema to DB in `.env`'s `DATABASE_URL`: `npm run db:setup`
+- Browser (Playwright MCP, for checking UI changes): `npm run setup:playwright` once,
+  then use the `playwright` MCP tools. Prefer looking at the rendered page over
+  reasoning about CSS — layout bugs (wrapping, overflow) don't show up in the
+  stylesheet. See `scripts/playwright-mcp.sh` for why the config is the shape it is.
 
 ## Layout
 - `src/lib/` — pure, DB-agnostic modules + the Neon access layer. The two high-risk

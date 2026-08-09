@@ -8,6 +8,7 @@
     "build": "next build",
     "start": "next start",
     "db:setup": "node --env-file=.env scripts/migrate.mjs",
+    "setup:playwright": "bash scripts/setup-playwright.sh",
     "seed": "node --env-file=.env scripts/seed.mjs",
     "test": "vitest run",
     "test:watch": "vitest",

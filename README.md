@@ -105,4 +105,19 @@ app/            Next.js App Router
   _components/  shared UI
 schema.sql      tables (players, games, ratings_cache)
 scripts/        migrate.mjs (apply schema), seed.mjs (demo data)
+                setup-playwright.sh + playwright-mcp.sh (browser tooling)
 ```
+
+## Browser tooling (optional, dev only)
+
+`.mcp.json` wires up the Playwright MCP server so an agent can open the app in a
+real browser and check UI changes. One-time setup:
+
+```
+npm run setup:playwright
+```
+
+That installs the Chromium build matching the pinned MCP version and stages
+Chromium's system libraries under `~/.cache/playwright-deps` — the usual
+`playwright install-deps` needs root, and this unprivileged route doesn't. Restart
+Claude Code afterwards to pick up the server.
