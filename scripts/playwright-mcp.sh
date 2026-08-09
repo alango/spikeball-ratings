@@ -22,8 +22,11 @@ if [ -d "$DEPS_LIB" ]; then
   export LD_LIBRARY_PATH="$DEPS_LIB${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 fi
 
+# Keep screenshots/snapshots/console logs in one gitignored directory instead of
+# scattering them through the repo root (relative filenames resolve inside it).
 exec npx -y "@playwright/mcp@$MCP_VERSION" \
   --browser chromium \
   --headless \
   --isolated \
+  --output-dir .playwright-mcp \
   "$@"
