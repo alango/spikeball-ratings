@@ -9,17 +9,23 @@ import type { FormResult, PlayerRef, Standing } from "../_lib/api";
  * Click is a no-op on desktop (hover-only, per design). `triggerClass` sets how the
  * trigger itself flows — baseline-aligned inline text by default, overridable for
  * e.g. a flex row of boxes.
+ *
+ * `placement` drops the tip below the trigger instead of above. The leaderboard scrolls
+ * horizontally, and a scroll container clips vertically too, so a tall tip on the top
+ * row would be cut off against the table's edge — those flip downward.
  */
 function Tip({
   children,
   tip,
   ariaLabel,
   triggerClass = "align-baseline",
+  placement = "above",
 }: {
   children: React.ReactNode;
   tip: React.ReactNode;
   ariaLabel?: string;
   triggerClass?: string;
+  placement?: "above" | "below";
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -34,7 +40,9 @@ function Tip({
     >
       {children}
       <span
-        className={`pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 -translate-x-1/2 whitespace-nowrap rounded bg-slate-900 px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-white group-hover:block ${
+        className={`pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 ${
+          placement === "below" ? "top-full mt-1" : "bottom-full mb-1"
+        } whitespace-nowrap rounded bg-slate-900 px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-white group-hover:block ${
           open ? "block" : "hidden"
         }`}
       >
@@ -136,7 +144,14 @@ const FORM_SLOTS = 5;
  * and the rating change that game gave the player, the same hover as a name in the
  * game history.
  */
-export function FormSquares({ form }: { form: FormResult[] }) {
+export function FormSquares({
+  form,
+  tipBelow = false,
+}: {
+  form: FormResult[];
+  /** Top row: its tip is taller than the space above it, so it opens downward. */
+  tipBelow?: boolean;
+}) {
   const results = form ?? [];
   const slots: (FormResult | null)[] = [
     ...Array<null>(Math.max(0, FORM_SLOTS - results.length)).fill(null),
@@ -149,7 +164,7 @@ export function FormSquares({ form }: { form: FormResult[] }) {
           {i === slots.length - 1 && (
             <span aria-hidden className="h-3.5 w-px bg-slate-300 sm:h-4" />
           )}
-          {r ? <FormSquare result={r} /> : <FormBlank />}
+          {r ? <FormSquare result={r} tipBelow={tipBelow} /> : <FormBlank />}
         </Fragment>
       ))}
     </span>
@@ -168,27 +183,49 @@ function FormBlank() {
   );
 }
 
-function FormSquare({ result }: { result: FormResult }) {
+/**
+ * One result square. The hover recounts the whole game from this player's side — who
+ * they partnered, who they played, the score their way round, and what it did to their
+ * rating — so the form column answers "what happened there?" and not just "won or lost".
+ */
+function FormSquare({ result, tipBelow }: { result: FormResult; tipBelow: boolean }) {
   const box = `${FORM_BOX} rounded font-semibold ${
     result.won ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
   }`;
   const square = <span className={box}>{result.won ? "W" : "L"}</span>;
   const outcome = result.won ? "Win" : "Loss";
   const date = formatDate(result.playedDate);
-  const d = result.ratingDelta;
-  if (d === null) return <span title={`${outcome}, ${date}`}>{square}</span>;
+  const versus = `with ${result.teammate} vs ${result.opponents.join(" & ")}`;
+  const score =
+    result.scoreFor !== null && result.scoreAgainst !== null
+      ? `${result.scoreFor}–${result.scoreAgainst}`
+      : null;
 
-  const { label, tone } = deltaTip(d);
+  const d = result.ratingDelta;
+  const delta = d === null ? null : deltaTip(d);
+  const summary = [outcome, date, versus, score, delta?.label]
+    .filter(Boolean)
+    .join(", ");
+
   return (
     <Tip
       triggerClass="block"
+      placement={tipBelow ? "below" : "above"}
       tip={
-        <span className="block text-center leading-snug">
+        <span className="block text-left leading-snug">
           <span className="block text-slate-300">{date}</span>
-          <span className={`block ${tone}`}>{label}</span>
+          <span className="block">with {result.teammate}</span>
+          <span className="block">
+            vs <span className="text-slate-300">{result.opponents.join(" & ")}</span>
+          </span>
+          <span className="block">
+            {score && <span className="tabular-nums">{score}</span>}
+            {score && delta && <span className="text-slate-500"> · </span>}
+            {delta && <span className={delta.tone}>{delta.label}</span>}
+          </span>
         </span>
       }
-      ariaLabel={`${outcome} on ${date}: ${label}`}
+      ariaLabel={summary}
     >
       {square}
     </Tip>

@@ -50,13 +50,18 @@ describe("formMap — last-5 results per player", () => {
     scoreA: null,
     scoreB: null,
   });
+  const formNames = nameMap([
+    ...players,
+    { id: 3, name: "Cara" },
+    { id: 4, name: "Dan" },
+  ]);
 
   it("keeps only the most recent FORM_GAMES, oldest first (newest last)", () => {
     // 7 games, player 1 on the winning side only on the last one.
     const games = [1, 2, 3, 4, 5, 6, 7].map((n) =>
       game(n, `2026-06-0${n}`, n === 7 ? "a" : "b"),
     );
-    const form = formMap(games);
+    const form = formMap(games, formNames);
     expect(form[1]).toHaveLength(FORM_GAMES);
     expect(form[1].map((r) => r.gameId)).toEqual([3, 4, 5, 6, 7]);
     expect(form[1].at(-1)).toMatchObject({ won: true, playedDate: "2026-06-07" });
@@ -68,27 +73,66 @@ describe("formMap — last-5 results per player", () => {
   it("orders by played-date then id, not insertion order (SPEC §6)", () => {
     // A back-dated game entered last must NOT land in the newest (last) slot.
     const games = [game(1, "2026-06-05", "a"), game(2, "2026-06-01", "b")];
-    expect(formMap(games)[1].map((r) => r.gameId)).toEqual([2, 1]);
+    expect(formMap(games, formNames)[1].map((r) => r.gameId)).toEqual([2, 1]);
   });
 
   it("breaks a same-day tie by row id", () => {
     const games = [game(2, "2026-06-01", "a"), game(1, "2026-06-01", "b")];
-    expect(formMap(games)[1].map((r) => r.gameId)).toEqual([1, 2]);
+    expect(formMap(games, formNames)[1].map((r) => r.gameId)).toEqual([1, 2]);
   });
 
   it("threads the Elo delta when supplied, null otherwise", () => {
     const deltas: GameDeltas = {
       1: { 1: { muBefore: 25, sigmaBefore: 8, muAfter: 27, sigmaAfter: 7 } },
     };
-    const form = formMap([game(1, "2026-06-01", "a")], deltas);
+    const form = formMap([game(1, "2026-06-01", "a")], formNames, deltas);
     expect(form[1][0].ratingDelta).toBeGreaterThan(0);
     expect(form[2][0].ratingDelta).toBeNull();
-    expect(formMap([game(1, "2026-06-01", "a")])[1][0].ratingDelta).toBeNull();
+    expect(formMap([game(1, "2026-06-01", "a")], formNames)[1][0].ratingDelta).toBeNull();
+  });
+
+  it("describes each game from that player's own side", () => {
+    const scored: GameRow = {
+      ...game(1, "2026-06-01", "b"),
+      scoreA: 12,
+      scoreB: 21,
+    };
+    const form = formMap([scored], formNames);
+    // Player 1 lost on team A: partner is 2, opponents are team B, own score first.
+    expect(form[1][0]).toMatchObject({
+      won: false,
+      teammate: "Bob",
+      opponents: ["Cara", "Dan"],
+      scoreFor: 12,
+      scoreAgainst: 21,
+    });
+    // Player 3 won on team B — the same game mirrored.
+    expect(form[3][0]).toMatchObject({
+      won: true,
+      teammate: "Dan",
+      opponents: ["Alice", "Bob"],
+      scoreFor: 21,
+      scoreAgainst: 12,
+    });
+  });
+
+  it("leaves both scores null for an unscored game", () => {
+    const form = formMap([game(1, "2026-06-01", "a")], formNames);
+    expect(form[1][0]).toMatchObject({ scoreFor: null, scoreAgainst: null });
+  });
+
+  it("falls back to #id for a name missing from the roster map", () => {
+    expect(formMap([game(1, "2026-06-01", "a")], {})[1][0]).toMatchObject({
+      teammate: "#2",
+      opponents: ["#3", "#4"],
+    });
   });
 
   it("gives a player with no games no entry (boardView fills in an empty list)", () => {
-    expect(formMap([])[1]).toBeUndefined();
-    expect(boardView([entry(1, 1500)], nameMap(players), {}, formMap([]))[0].form).toEqual([]);
+    expect(formMap([], formNames)[1]).toBeUndefined();
+    expect(
+      boardView([entry(1, 1500)], nameMap(players), {}, formMap([], formNames))[0].form,
+    ).toEqual([]);
   });
 });
 

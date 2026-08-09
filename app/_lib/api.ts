@@ -12,13 +12,21 @@ export interface PlayerRef {
   ratingDelta: number | null;
 }
 
-/** One of a player's recent results, for the leaderboard's "Last 5" column. */
+/**
+ * One of a player's recent results, for the leaderboard's "Last 5" column. Oriented to
+ * that player: their partner, their opponents, their score first.
+ */
 export interface FormResult {
   gameId: number;
   playedDate: string;
   won: boolean;
   /** Elo-scale rating change this game gave the player (null if unavailable). */
   ratingDelta: number | null;
+  teammate: string;
+  opponents: [string, string];
+  /** Their team's score, then the other team's; both null when the game was unscored. */
+  scoreFor: number | null;
+  scoreAgainst: number | null;
 }
 
 export interface Standing {

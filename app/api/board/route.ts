@@ -24,11 +24,12 @@ export async function GET() {
       players.map((p) => p.id),
       toRatingGames(gameRows),
     );
+    const names = nameMap(players);
     const standings = boardView(
       entries,
-      nameMap(players),
+      names,
       recordMap(gameRows),
-      formMap(gameRows, deltas),
+      formMap(gameRows, names, deltas),
     );
     return Response.json({ standings, asOf: today });
   } catch (e) {

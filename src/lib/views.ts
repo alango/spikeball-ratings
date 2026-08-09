@@ -5,7 +5,7 @@ import { eloDelta, eloBreakdown } from "./display";
 import type { BoardEntry } from "./display";
 import type { GameRow } from "./db";
 import type { GameDeltas } from "./rating";
-import type { Player, PlayerId } from "./types";
+import type { Pair, Player, PlayerId } from "./types";
 
 /**
  * A player is "provisional" until they've played this many games (SPEC §2). A game
@@ -56,12 +56,24 @@ export function recordMap(games: GameRow[]): Record<PlayerId, PlayerRecord> {
 /** How many recent results the board's form column shows. */
 export const FORM_GAMES = 5;
 
+/**
+ * One of a player's recent results. Everything here is from THAT player's point of
+ * view — their partner, their opponents, their score first — so the board's hover can
+ * describe the game without the reader having to work out which side they were on.
+ */
 export interface FormResult {
   gameId: number;
   playedDate: string;
   won: boolean;
   /** Elo-scale change this game gave the player — same number the history hover shows. */
   ratingDelta: number | null;
+  /** Who they played with. */
+  teammate: string;
+  /** Who they played against. */
+  opponents: [string, string];
+  /** Their team's score, then the other team's; both null when the game was unscored. */
+  scoreFor: number | null;
+  scoreAgainst: number | null;
 }
 
 export type FormMap = Record<PlayerId, FormResult[]>;
@@ -72,29 +84,46 @@ export type FormMap = Record<PlayerId, FormResult[]>;
  * Recency follows the replay order (played-date, then row-id — SPEC §6) and NOT
  * insertion time, so a back-dated game lands in its true chronological slot here too.
  * Deltas come from `rebuildWithDeltas`; without them the results still show, just
- * without the hover.
+ * without the rating change in the hover.
  */
-export function formMap(games: GameRow[], deltas?: GameDeltas): FormMap {
+export function formMap(
+  games: GameRow[],
+  names: NameMap,
+  deltas?: GameDeltas,
+): FormMap {
   const form: FormMap = {};
+  const nameOf = (id: PlayerId) => names[id] ?? `#${id}`;
   const ordered = [...games].sort((a, b) =>
     a.playedDate < b.playedDate ? -1 : a.playedDate > b.playedDate ? 1 : a.id - b.id,
   );
   for (const g of ordered) {
-    const push = (id: PlayerId, won: boolean) => {
-      const d = deltas?.[g.id]?.[id];
-      const list = (form[id] ??= []);
-      list.push({
-        gameId: g.id,
-        playedDate: g.playedDate,
-        won,
-        ratingDelta: d ? eloDelta(d) : null,
-      });
-      if (list.length > FORM_GAMES) list.shift();
+    // Recorded once per side, so each player's entry is oriented to their own team.
+    const addSide = (
+      team: Pair,
+      opponents: Pair,
+      won: boolean,
+      scoreFor: number | null,
+      scoreAgainst: number | null,
+    ) => {
+      for (const id of team) {
+        const d = deltas?.[g.id]?.[id];
+        const list = (form[id] ??= []);
+        list.push({
+          gameId: g.id,
+          playedDate: g.playedDate,
+          won,
+          ratingDelta: d ? eloDelta(d) : null,
+          teammate: nameOf(team[0] === id ? team[1] : team[0]),
+          opponents: [nameOf(opponents[0]), nameOf(opponents[1])],
+          scoreFor,
+          scoreAgainst,
+        });
+        if (list.length > FORM_GAMES) list.shift();
+      }
     };
-    const winners = g.winner === "a" ? g.teamA : g.teamB;
-    const losers = g.winner === "a" ? g.teamB : g.teamA;
-    for (const id of winners) push(id, true);
-    for (const id of losers) push(id, false);
+    const aWon = g.winner === "a";
+    addSide(g.teamA, g.teamB, aWon, g.scoreA, g.scoreB);
+    addSide(g.teamB, g.teamA, !aWon, g.scoreB, g.scoreA);
   }
   return form;
 }

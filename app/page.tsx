@@ -82,7 +82,7 @@ function Leaderboard({ data }: { data: Awaited<ReturnType<typeof getBoard>> | nu
                 <RatingBreakdown standing={s} />
               </td>
               <td className="whitespace-nowrap px-2 py-2 text-center sm:px-3">
-                <FormSquares form={s.form} />
+                <FormSquares form={s.form} tipBelow={s.rank === 1} />
               </td>
               <td className="whitespace-nowrap px-2 py-2 text-center tabular-nums text-slate-500 sm:px-3">
                 {s.wins}–{s.losses}
