@@ -235,6 +235,22 @@ export function TeamNames({ team }: { team: PlayerRef[] }) {
   );
 }
 
+/**
+ * Split a games list into consecutive runs sharing a played date, so each date can be
+ * printed once as a heading instead of repeated on every row. Sessions usually produce
+ * several games a day, so this both shortens the list and makes sessions visible.
+ * Relies on the list already being date-ordered (`historyView` sorts it newest-first).
+ */
+export function groupByDate<T extends { playedDate: string }>(games: T[]): [string, T[]][] {
+  const groups: [string, T[]][] = [];
+  for (const g of games) {
+    const last = groups[groups.length - 1];
+    if (last && last[0] === g.playedDate) last[1].push(g);
+    else groups.push([g.playedDate, [g]]);
+  }
+  return groups;
+}
+
 /** ISO `YYYY-MM-DD` → "12 Jun 2026" (parsed as a local calendar day). */
 export function formatDate(iso: string): string {
   return new Date(`${iso}T00:00:00`).toLocaleDateString("en-GB", {

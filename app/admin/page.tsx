@@ -21,6 +21,7 @@ import {
   ShowAllGames,
   TeamNames,
   formatDate,
+  groupByDate,
 } from "../_components/ui";
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -408,56 +409,66 @@ function GameList({
   return (
     <section className="space-y-3">
       <h2 className="text-lg font-semibold">Logged games</h2>
-      <ul className="space-y-2">
-        {shown.map((g) => {
-          const aWon = g.winner === "a";
-          const winTeam = aWon ? g.teamA : g.teamB;
-          const loseTeam = aWon ? g.teamB : g.teamA;
-          const winScore = aWon ? g.scoreA : g.scoreB;
-          const loseScore = aWon ? g.scoreB : g.scoreA;
-          return (
-            <li
-              key={g.id}
-              className={`flex items-center gap-3 rounded-lg border bg-white px-3 py-2 text-sm ${
-                g.id === editingId ? "border-slate-900" : "border-slate-200"
-              }`}
-            >
-              <span className="w-24 shrink-0 whitespace-nowrap text-xs text-slate-400">
-                {formatDate(g.playedDate)}
-              </span>
-              <span className="flex flex-1 flex-wrap items-center gap-x-2 gap-y-1">
-                <span className="font-semibold">
-                  <TeamNames team={winTeam} />
-                </span>
-                <span className="text-slate-400">vs</span>
-                <span className="text-slate-500">
-                  <TeamNames team={loseTeam} />
-                </span>
-              </span>
-              <span className="w-14 shrink-0 text-right tabular-nums text-slate-500">
-                {winScore !== null && loseScore !== null
-                  ? `${winScore}–${loseScore}`
-                  : ""}
-              </span>
-              {/* Delete is kept clear of edit — it's destructive and they sat adjacent. */}
-              <span className="flex shrink-0 items-center gap-3">
-                <button
-                  onClick={() => onEdit(g)}
-                  className="text-slate-500 hover:text-slate-900"
+      {/* Grouped by date like the public history — one heading per session instead of
+          a date on every row, which also leaves the teams room to stay on one line. */}
+      {groupByDate(shown).map(([date, games]) => (
+        <div key={date}>
+          <h3 className="mb-1 px-1 text-xs font-medium uppercase tracking-wide text-slate-400">
+            {formatDate(date)}
+          </h3>
+          <ul className="divide-y divide-slate-100 overflow-hidden rounded-lg border border-slate-200 bg-white">
+            {games.map((g) => {
+              const aWon = g.winner === "a";
+              const winTeam = aWon ? g.teamA : g.teamB;
+              const loseTeam = aWon ? g.teamB : g.teamA;
+              const winScore = aWon ? g.scoreA : g.scoreB;
+              const loseScore = aWon ? g.scoreB : g.scoreA;
+              return (
+                <li
+                  key={g.id}
+                  className={`flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-2 text-sm ${
+                    g.id === editingId ? "bg-slate-100" : ""
+                  }`}
                 >
-                  edit
-                </button>
-                <button
-                  onClick={() => remove(g.id)}
-                  className="text-rose-500 hover:text-rose-700"
-                >
-                  delete
-                </button>
-              </span>
-            </li>
-          );
-        })}
-      </ul>
+                  {/* Floor on the winning team so every "vs" and losing team lines up
+                      down the list — see the public history for the sizing note. */}
+                  <span className="font-semibold sm:min-w-36">
+                    <TeamNames team={winTeam} />
+                  </span>
+                  <span className="text-slate-400">vs</span>
+                  <span className="text-slate-500">
+                    <TeamNames team={loseTeam} />
+                  </span>
+                  {/* Score and actions travel as one right-aligned group, so when a
+                      narrow screen wraps them onto their own line they stay together
+                      at the right rather than splitting the row's free space between
+                      two auto margins. Delete is kept clear of edit — it's
+                      destructive, and the two sat flush against each other. */}
+                  <span className="ml-auto flex shrink-0 items-center gap-3">
+                    <span className="tabular-nums text-slate-500">
+                      {winScore !== null && loseScore !== null
+                        ? `${winScore}–${loseScore}`
+                        : ""}
+                    </span>
+                    <button
+                      onClick={() => onEdit(g)}
+                      className="text-slate-500 hover:text-slate-900"
+                    >
+                      edit
+                    </button>
+                    <button
+                      onClick={() => remove(g.id)}
+                      className="text-rose-500 hover:text-rose-700"
+                    >
+                      delete
+                    </button>
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ))}
       <ShowAllGames
         total={games.length}
         showAll={showAll}

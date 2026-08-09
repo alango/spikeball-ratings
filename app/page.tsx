@@ -12,6 +12,7 @@ import {
   ShowAllGames,
   TeamNames,
   formatDate,
+  groupByDate,
 } from "./_components/ui";
 
 export default function HomePage() {
@@ -103,39 +104,53 @@ function History({ data }: { data: Awaited<ReturnType<typeof getHistory>> | null
 
   const shown = showAll ? data.games : data.games.slice(0, RECENT_GAMES);
 
+  // One date heading per session rather than a date on every row: a session is usually
+  // several games, so this drops repeated text AND frees the width that used to push
+  // the teams into wrapping on a phone.
   return (
-    <div className="space-y-2">
-      <ul className="space-y-2">
-        {shown.map((g) => {
-          const aWon = g.winner === "a";
-          const winTeam = aWon ? g.teamA : g.teamB;
-          const loseTeam = aWon ? g.teamB : g.teamA;
-          const winScore = aWon ? g.scoreA : g.scoreB;
-          const loseScore = aWon ? g.scoreB : g.scoreA;
-          return (
-            <li
-              key={g.id}
-              className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
-            >
-              <span className="w-24 shrink-0 whitespace-nowrap text-xs text-slate-400">
-                {formatDate(g.playedDate)}
-              </span>
-              <span className="font-semibold">
-                <TeamNames team={winTeam} />
-              </span>
-              <span className="text-slate-400">vs</span>
-              <span className="text-slate-500">
-                <TeamNames team={loseTeam} />
-              </span>
-              {winScore !== null && loseScore !== null && (
-                <span className="ml-auto tabular-nums text-slate-500">
-                  {winScore}–{loseScore}
-                </span>
-              )}
-            </li>
-          );
-        })}
-      </ul>
+    <div className="space-y-4">
+      {groupByDate(shown).map(([date, games]) => (
+        <div key={date}>
+          <h3 className="mb-1 px-1 text-xs font-medium uppercase tracking-wide text-slate-400">
+            {formatDate(date)}
+          </h3>
+          <ul className="divide-y divide-slate-100 overflow-hidden rounded-lg border border-slate-200 bg-white">
+            {games.map((g) => {
+              const aWon = g.winner === "a";
+              const winTeam = aWon ? g.teamA : g.teamB;
+              const loseTeam = aWon ? g.teamB : g.teamA;
+              const winScore = aWon ? g.scoreA : g.scoreB;
+              const loseScore = aWon ? g.scoreB : g.scoreA;
+              return (
+                <li
+                  key={g.id}
+                  className="flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-2 text-sm"
+                >
+                  {/* A floor (not a fixed width) on the winning team lines up every
+                      "vs" and every losing team. The widest current pairing is ~124px,
+                      so 9rem has headroom; a longer name later shifts just its own row
+                      rather than wrapping inside a rigid column. Only from `sm`: on a
+                      phone the reserved column pushes the score off the line, and a
+                      quarter of the rows grow to two lines to buy alignment nobody can
+                      see at that width. */}
+                  <span className="font-semibold sm:min-w-36">
+                    <TeamNames team={winTeam} />
+                  </span>
+                  <span className="text-slate-400">vs</span>
+                  <span className="text-slate-500">
+                    <TeamNames team={loseTeam} />
+                  </span>
+                  {winScore !== null && loseScore !== null && (
+                    <span className="ml-auto tabular-nums text-slate-500">
+                      {winScore}–{loseScore}
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ))}
       <ShowAllGames
         total={data.games.length}
         showAll={showAll}
