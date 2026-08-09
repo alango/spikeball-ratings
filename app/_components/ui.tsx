@@ -1,25 +1,25 @@
 "use client";
 // Small shared presentational bits used across the public and admin pages.
-import { useState } from "react";
-import type { PlayerRef, Standing } from "../_lib/api";
+import { Fragment, useState } from "react";
+import type { FormResult, PlayerRef, Standing } from "../_lib/api";
 
 /**
- * A trigger that reveals a small tooltip: on hover (desktop) OR on tap (mobile,
- * where there's no hover) — the trigger is a button that toggles the tip. Click is a
- * no-op on desktop (hover-only, per design). `tipPosition` places the tip relative to
- * the trigger; the default centers it, and right-anchoring keeps it inside a table's
- * edge for right-aligned cells.
+ * A trigger that reveals a small tooltip above it, centred: on hover (desktop) OR on
+ * tap (mobile, where there's no hover) — the trigger is a button that toggles the tip.
+ * Click is a no-op on desktop (hover-only, per design). `triggerClass` sets how the
+ * trigger itself flows — baseline-aligned inline text by default, overridable for
+ * e.g. a flex row of boxes.
  */
 function Tip({
   children,
   tip,
   ariaLabel,
-  tipPosition = "left-1/2 -translate-x-1/2",
+  triggerClass = "align-baseline",
 }: {
   children: React.ReactNode;
   tip: React.ReactNode;
   ariaLabel?: string;
-  tipPosition?: string;
+  triggerClass?: string;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -30,11 +30,11 @@ function Tip({
       }}
       onBlur={() => setOpen(false)}
       aria-label={ariaLabel}
-      className="group relative cursor-default bg-transparent align-baseline"
+      className={`group relative cursor-default bg-transparent ${triggerClass}`}
     >
       {children}
       <span
-        className={`pointer-events-none absolute bottom-full ${tipPosition} z-10 mb-1 whitespace-nowrap rounded bg-slate-900 px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-white group-hover:block ${
+        className={`pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 -translate-x-1/2 whitespace-nowrap rounded bg-slate-900 px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-white group-hover:block ${
           open ? "block" : "hidden"
         }`}
       >
@@ -64,6 +64,18 @@ export function ProvisionalBadge() {
 }
 
 /**
+ * A signed rating change as shown in a (dark) tooltip: green for a gain, red for a
+ * loss. Shared by the history hover and the leaderboard's "Last 5" hover so the two
+ * always read identically.
+ */
+function deltaTip(d: number): { label: string; tone: string } {
+  return {
+    label: `${d > 0 ? "+" : d < 0 ? "−" : "±"}${Math.abs(d)}`,
+    tone: d > 0 ? "text-emerald-400" : d < 0 ? "text-rose-400" : "text-slate-300",
+  };
+}
+
+/**
  * A player's name that reveals the rating gain/loss this game gave them (green for a
  * gain, red for a loss). Revealed on hover (desktop) OR on tap (mobile, where there
  * is no hover) — the name is a button that toggles the tooltip. Falls back to a plain
@@ -72,9 +84,7 @@ export function ProvisionalBadge() {
 export function PlayerName({ player }: { player: PlayerRef }) {
   const d = player.ratingDelta;
   if (d === null || d === undefined) return <>{player.name}</>;
-  const sign = d > 0 ? "+" : d < 0 ? "−" : "±";
-  const label = `${sign}${Math.abs(d)}`;
-  const tone = d > 0 ? "text-emerald-400" : d < 0 ? "text-rose-400" : "text-slate-300";
+  const { label, tone } = deltaTip(d);
   return (
     <Tip
       tip={<span className={tone}>{label}</span>}
@@ -85,16 +95,86 @@ export function PlayerName({ player }: { player: PlayerRef }) {
   );
 }
 
+/** Slots in the board's "Last 5" column — mirrors `FORM_GAMES` in `views.ts`. */
+const FORM_SLOTS = 5;
+
+/**
+ * A player's last 5 results as W/L squares reading left-to-right in time, so the
+ * RIGHTMOST square is the most recent game. Two cues keep that direction readable at
+ * a glance: a rule separating the latest result from the four before it, and dashes
+ * padding from the left when a player has played fewer than five games — which also
+ * keeps every row's latest result in the same column. Each square reveals its date
+ * and the rating change that game gave the player, the same hover as a name in the
+ * game history.
+ */
+export function FormSquares({ form }: { form: FormResult[] }) {
+  const results = form ?? [];
+  const slots: (FormResult | null)[] = [
+    ...Array<null>(Math.max(0, FORM_SLOTS - results.length)).fill(null),
+    ...results.slice(-FORM_SLOTS),
+  ];
+  return (
+    <span className="inline-flex items-center gap-0.5 align-middle sm:gap-1">
+      {slots.map((r, i) => (
+        <Fragment key={r ? `g${r.gameId}` : `pad${i}`}>
+          {i === slots.length - 1 && (
+            <span aria-hidden className="h-3.5 w-px bg-slate-300 sm:h-4" />
+          )}
+          {r ? <FormSquare result={r} /> : <FormBlank />}
+        </Fragment>
+      ))}
+    </span>
+  );
+}
+
+/** Squares shrink a little below `sm` so all five still fit a phone-width column. */
+const FORM_BOX = "flex h-4.5 w-4.5 items-center justify-center text-[10px] sm:h-5 sm:w-5 sm:text-[11px]";
+
+/** A not-yet-played slot: keeps the columns aligned and shows how new a player is. */
+function FormBlank() {
+  return (
+    <span aria-hidden className={`${FORM_BOX} text-slate-300`}>
+      –
+    </span>
+  );
+}
+
+function FormSquare({ result }: { result: FormResult }) {
+  const box = `${FORM_BOX} rounded font-semibold ${
+    result.won ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
+  }`;
+  const square = <span className={box}>{result.won ? "W" : "L"}</span>;
+  const outcome = result.won ? "Win" : "Loss";
+  const date = formatDate(result.playedDate);
+  const d = result.ratingDelta;
+  if (d === null) return <span title={`${outcome}, ${date}`}>{square}</span>;
+
+  const { label, tone } = deltaTip(d);
+  return (
+    <Tip
+      triggerClass="block"
+      tip={
+        <span className="block text-center leading-snug">
+          <span className="block text-slate-300">{date}</span>
+          <span className={`block ${tone}`}>{label}</span>
+        </span>
+      }
+      ariaLabel={`${outcome} on ${date}: ${label}`}
+    >
+      {square}
+    </Tip>
+  );
+}
+
 /**
  * A leaderboard rating that reveals its make-up on hover/tap — for people who want to
  * dig into the number. The shown rating is `ceiling − uncertainty` (the raw μ/σ that
- * produced it, and the points currently docked for uncertainty). Right-anchored so it
- * stays inside the table's edge.
+ * produced it, and the points currently docked for uncertainty). The tip centres on
+ * the number: the rating column sits mid-table, so there is room either side.
  */
 export function RatingBreakdown({ standing }: { standing: Standing }) {
   return (
     <Tip
-      tipPosition="right-0"
       ariaLabel={`${standing.name} rating breakdown`}
       tip={
         <span className="block text-center leading-snug">

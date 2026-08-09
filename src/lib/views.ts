@@ -51,6 +51,54 @@ export function recordMap(games: GameRow[]): Record<PlayerId, PlayerRecord> {
   return rec;
 }
 
+// ---- Recent form (the board's "Last 5" column) ------------------------------
+
+/** How many recent results the board's form column shows. */
+export const FORM_GAMES = 5;
+
+export interface FormResult {
+  gameId: number;
+  playedDate: string;
+  won: boolean;
+  /** Elo-scale change this game gave the player — same number the history hover shows. */
+  ratingDelta: number | null;
+}
+
+export type FormMap = Record<PlayerId, FormResult[]>;
+
+/**
+ * Each player's most recent {@link FORM_GAMES} results in chronological order — the
+ * order they're read left-to-right on the board, so the LAST entry is the newest.
+ * Recency follows the replay order (played-date, then row-id — SPEC §6) and NOT
+ * insertion time, so a back-dated game lands in its true chronological slot here too.
+ * Deltas come from `rebuildWithDeltas`; without them the results still show, just
+ * without the hover.
+ */
+export function formMap(games: GameRow[], deltas?: GameDeltas): FormMap {
+  const form: FormMap = {};
+  const ordered = [...games].sort((a, b) =>
+    a.playedDate < b.playedDate ? -1 : a.playedDate > b.playedDate ? 1 : a.id - b.id,
+  );
+  for (const g of ordered) {
+    const push = (id: PlayerId, won: boolean) => {
+      const d = deltas?.[g.id]?.[id];
+      const list = (form[id] ??= []);
+      list.push({
+        gameId: g.id,
+        playedDate: g.playedDate,
+        won,
+        ratingDelta: d ? eloDelta(d) : null,
+      });
+      if (list.length > FORM_GAMES) list.shift();
+    };
+    const winners = g.winner === "a" ? g.teamA : g.teamB;
+    const losers = g.winner === "a" ? g.teamB : g.teamA;
+    for (const id of winners) push(id, true);
+    for (const id of losers) push(id, false);
+  }
+  return form;
+}
+
 // ---- Board view -------------------------------------------------------------
 
 export interface Standing {
@@ -70,6 +118,8 @@ export interface Standing {
   provisional: boolean;
   wins: number;
   losses: number;
+  /** Up to {@link FORM_GAMES} most recent results, oldest first (newest last). */
+  form: FormResult[];
   lastPlayedDate: string | null;
 }
 
@@ -77,6 +127,7 @@ export function boardView(
   entries: BoardEntry[],
   names: NameMap,
   records: Record<PlayerId, PlayerRecord>,
+  form: FormMap = {},
 ): Standing[] {
   return entries.map((e, i) => {
     const wins = records[e.id]?.wins ?? 0;
@@ -91,6 +142,7 @@ export function boardView(
       provisional: wins + losses < PROVISIONAL_MIN_GAMES,
       wins,
       losses,
+      form: form[e.id] ?? [],
       lastPlayedDate: e.lastPlayedDate,
     };
   });

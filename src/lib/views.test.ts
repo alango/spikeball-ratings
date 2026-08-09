@@ -1,5 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { boardView, historyView, recordMap, PROVISIONAL_MIN_GAMES, nameMap } from "./views";
+import {
+  boardView,
+  formMap,
+  historyView,
+  recordMap,
+  FORM_GAMES,
+  PROVISIONAL_MIN_GAMES,
+  nameMap,
+} from "./views";
 import { eloScore } from "./display";
 import type { BoardEntry } from "./display";
 import type { GameRow } from "./db";
@@ -29,6 +37,58 @@ describe("recordMap", () => {
     expect(rec[1]).toEqual({ wins: 1, losses: 1 });
     expect(rec[2]).toEqual({ wins: 2, losses: 0 });
     expect(rec[4]).toEqual({ wins: 1, losses: 1 });
+  });
+});
+
+describe("formMap — last-5 results per player", () => {
+  const game = (id: number, playedDate: string, winner: "a" | "b"): GameRow => ({
+    id,
+    playedDate,
+    teamA: [1, 2],
+    teamB: [3, 4],
+    winner,
+    scoreA: null,
+    scoreB: null,
+  });
+
+  it("keeps only the most recent FORM_GAMES, oldest first (newest last)", () => {
+    // 7 games, player 1 on the winning side only on the last one.
+    const games = [1, 2, 3, 4, 5, 6, 7].map((n) =>
+      game(n, `2026-06-0${n}`, n === 7 ? "a" : "b"),
+    );
+    const form = formMap(games);
+    expect(form[1]).toHaveLength(FORM_GAMES);
+    expect(form[1].map((r) => r.gameId)).toEqual([3, 4, 5, 6, 7]);
+    expect(form[1].at(-1)).toMatchObject({ won: true, playedDate: "2026-06-07" });
+    expect(form[1].at(-2)!.won).toBe(false);
+    // The losing side of game 7 mirrors it.
+    expect(form[3].at(-1)).toMatchObject({ gameId: 7, won: false });
+  });
+
+  it("orders by played-date then id, not insertion order (SPEC §6)", () => {
+    // A back-dated game entered last must NOT land in the newest (last) slot.
+    const games = [game(1, "2026-06-05", "a"), game(2, "2026-06-01", "b")];
+    expect(formMap(games)[1].map((r) => r.gameId)).toEqual([2, 1]);
+  });
+
+  it("breaks a same-day tie by row id", () => {
+    const games = [game(2, "2026-06-01", "a"), game(1, "2026-06-01", "b")];
+    expect(formMap(games)[1].map((r) => r.gameId)).toEqual([1, 2]);
+  });
+
+  it("threads the Elo delta when supplied, null otherwise", () => {
+    const deltas: GameDeltas = {
+      1: { 1: { muBefore: 25, sigmaBefore: 8, muAfter: 27, sigmaAfter: 7 } },
+    };
+    const form = formMap([game(1, "2026-06-01", "a")], deltas);
+    expect(form[1][0].ratingDelta).toBeGreaterThan(0);
+    expect(form[2][0].ratingDelta).toBeNull();
+    expect(formMap([game(1, "2026-06-01", "a")])[1][0].ratingDelta).toBeNull();
+  });
+
+  it("gives a player with no games no entry (boardView fills in an empty list)", () => {
+    expect(formMap([])[1]).toBeUndefined();
+    expect(boardView([entry(1, 1500)], nameMap(players), {}, formMap([]))[0].form).toEqual([]);
   });
 });
 

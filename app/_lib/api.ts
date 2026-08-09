@@ -12,6 +12,15 @@ export interface PlayerRef {
   ratingDelta: number | null;
 }
 
+/** One of a player's recent results, for the leaderboard's "Last 5" column. */
+export interface FormResult {
+  gameId: number;
+  playedDate: string;
+  won: boolean;
+  /** Elo-scale rating change this game gave the player (null if unavailable). */
+  ratingDelta: number | null;
+}
+
 export interface Standing {
   rank: number;
   id: number;
@@ -28,6 +37,8 @@ export interface Standing {
   provisional: boolean;
   wins: number;
   losses: number;
+  /** Up to 5 most recent results, oldest first — the left-to-right display order. */
+  form: FormResult[];
   lastPlayedDate: string | null;
 }
 
