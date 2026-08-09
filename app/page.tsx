@@ -1,12 +1,15 @@
 "use client";
 
+import { useState } from "react";
 import { usePoll } from "./_lib/usePoll";
 import { getBoard, getHistory } from "./_lib/api";
 import {
   FormSquares,
   Notice,
   ProvisionalBadge,
+  RECENT_GAMES,
   RatingBreakdown,
+  ShowAllGames,
   TeamNames,
   formatDate,
 } from "./_components/ui";
@@ -92,41 +95,52 @@ function Leaderboard({ data }: { data: Awaited<ReturnType<typeof getBoard>> | nu
 }
 
 function History({ data }: { data: Awaited<ReturnType<typeof getHistory>> | null }) {
+  const [showAll, setShowAll] = useState(false);
+
   if (!data) return <p className="text-sm text-slate-400">Loading…</p>;
   if (data.games.length === 0)
     return <p className="text-sm text-slate-400">No games logged yet.</p>;
 
+  const shown = showAll ? data.games : data.games.slice(0, RECENT_GAMES);
+
   return (
-    <ul className="space-y-2">
-      {data.games.map((g) => {
-        const aWon = g.winner === "a";
-        const winTeam = aWon ? g.teamA : g.teamB;
-        const loseTeam = aWon ? g.teamB : g.teamA;
-        const winScore = aWon ? g.scoreA : g.scoreB;
-        const loseScore = aWon ? g.scoreB : g.scoreA;
-        return (
-          <li
-            key={g.id}
-            className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
-          >
-            <span className="w-24 shrink-0 whitespace-nowrap text-xs text-slate-400">
-              {formatDate(g.playedDate)}
-            </span>
-            <span className="font-semibold">
-              <TeamNames team={winTeam} />
-            </span>
-            <span className="text-slate-400">vs</span>
-            <span className="text-slate-500">
-              <TeamNames team={loseTeam} />
-            </span>
-            {winScore !== null && loseScore !== null && (
-              <span className="ml-auto tabular-nums text-slate-500">
-                {winScore}–{loseScore}
+    <div className="space-y-2">
+      <ul className="space-y-2">
+        {shown.map((g) => {
+          const aWon = g.winner === "a";
+          const winTeam = aWon ? g.teamA : g.teamB;
+          const loseTeam = aWon ? g.teamB : g.teamA;
+          const winScore = aWon ? g.scoreA : g.scoreB;
+          const loseScore = aWon ? g.scoreB : g.scoreA;
+          return (
+            <li
+              key={g.id}
+              className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+            >
+              <span className="w-24 shrink-0 whitespace-nowrap text-xs text-slate-400">
+                {formatDate(g.playedDate)}
               </span>
-            )}
-          </li>
-        );
-      })}
-    </ul>
+              <span className="font-semibold">
+                <TeamNames team={winTeam} />
+              </span>
+              <span className="text-slate-400">vs</span>
+              <span className="text-slate-500">
+                <TeamNames team={loseTeam} />
+              </span>
+              {winScore !== null && loseScore !== null && (
+                <span className="ml-auto tabular-nums text-slate-500">
+                  {winScore}–{loseScore}
+                </span>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      <ShowAllGames
+        total={data.games.length}
+        showAll={showAll}
+        onToggle={() => setShowAll((v) => !v)}
+      />
+    </div>
   );
 }

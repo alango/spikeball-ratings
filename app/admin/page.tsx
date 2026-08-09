@@ -15,7 +15,13 @@ import {
   type GameView,
   type Player,
 } from "../_lib/api";
-import { Notice, TeamNames, formatDate } from "../_components/ui";
+import {
+  Notice,
+  RECENT_GAMES,
+  ShowAllGames,
+  TeamNames,
+  formatDate,
+} from "../_components/ui";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -46,6 +52,15 @@ export default function AdminPage() {
   const refresh = () => {
     playersPoll.refresh();
     historyPoll.refresh();
+  };
+
+  // The game being edited, owned here because the form and the list it's picked from
+  // are now separated by the roster. Passing it as `key` to GameForm resets the form's
+  // fields on every switch, so there's no stale state to clear by hand.
+  const [editing, setEditing] = useState<GameView | null>(null);
+  const startEdit = (g: GameView) => {
+    setEditing(g);
+    document.getElementById("game-form")?.scrollIntoView({ behavior: "smooth" });
   };
 
   const [err, setErr] = useState<string | null>(null);
@@ -111,10 +126,25 @@ export default function AdminPage() {
       {err && <Notice kind="error">{err}</Notice>}
       {msg && <Notice kind="info">{msg}</Notice>}
 
+      {/* Roster sits above the game list: the list is long and grows forever, and
+          having it in between put "add a player" three screens down the page. */}
       <GameForm
+        key={editing?.id ?? "new"}
         pin={pin}
         players={players}
-        games={games}
+        editing={editing}
+        onDone={(m) => {
+          flash(m);
+          setEditing(null);
+          refresh();
+        }}
+        onCancel={() => setEditing(null)}
+        onError={fail}
+      />
+
+      <Roster
+        pin={pin}
+        players={players}
         onDone={(m) => {
           flash(m);
           refresh();
@@ -122,9 +152,11 @@ export default function AdminPage() {
         onError={fail}
       />
 
-      <Roster
+      <GameList
         pin={pin}
-        players={players}
+        games={games}
+        editingId={editing?.id ?? null}
+        onEdit={startEdit}
         onDone={(m) => {
           flash(m);
           refresh();
@@ -140,40 +172,38 @@ export default function AdminPage() {
 function GameForm({
   pin,
   players,
-  games,
+  editing,
   onDone,
+  onCancel,
   onError,
 }: {
   pin: string;
   players: Player[];
-  games: GameView[];
+  editing: GameView | null;
   onDone: (m: string) => void;
+  onCancel: () => void;
   onError: (e: unknown) => void;
 }) {
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [date, setDate] = useState(today());
-  const [slots, setSlots] = useState<(number | "")[]>(["", "", "", ""]); // a1,a2,b1,b2
-  const [winner, setWinner] = useState<"a" | "b">("a");
-  const [scoreA, setScoreA] = useState("");
-  const [scoreB, setScoreB] = useState("");
+  // Seeded from `editing` on mount; the parent remounts this via `key` when the game
+  // being edited changes, so these initialisers are the only place fields are set.
+  const editingId = editing?.id ?? null;
+  const [date, setDate] = useState(editing?.playedDate ?? today());
+  const [slots, setSlots] = useState<(number | "")[]>(
+    editing
+      ? [editing.teamA[0].id, editing.teamA[1].id, editing.teamB[0].id, editing.teamB[1].id]
+      : ["", "", "", ""], // a1,a2,b1,b2
+  );
+  const [winner, setWinner] = useState<"a" | "b">(editing?.winner ?? "a");
+  const [scoreA, setScoreA] = useState(editing?.scoreA?.toString() ?? "");
+  const [scoreB, setScoreB] = useState(editing?.scoreB?.toString() ?? "");
 
   const reset = () => {
-    setEditingId(null);
     setDate(today());
     setSlots(["", "", "", ""]);
     setWinner("a");
     setScoreA("");
     setScoreB("");
   };
-
-  function loadForEdit(g: GameView) {
-    setEditingId(g.id);
-    setDate(g.playedDate);
-    setSlots([g.teamA[0].id, g.teamA[1].id, g.teamB[0].id, g.teamB[1].id]);
-    setWinner(g.winner);
-    setScoreA(g.scoreA?.toString() ?? "");
-    setScoreB(g.scoreB?.toString() ?? "");
-  }
 
   const setSlot = (i: number, v: string) =>
     setSlots((s) => s.map((x, j) => (j === i ? (v === "" ? "" : Number(v)) : x)));
@@ -192,22 +222,11 @@ function GameForm({
       if (editingId === null) {
         await adminLogGame(pin, payload);
         onDone("Game logged.");
+        reset(); // no remount when logging back-to-back games, so clear by hand
       } else {
         await adminEditGame(pin, editingId, payload);
-        onDone("Game updated.");
+        onDone("Game updated."); // parent clears `editing`, which remounts and resets
       }
-      reset();
-    } catch (e) {
-      onError(e);
-    }
-  }
-
-  async function remove(id: number) {
-    if (!confirm("Delete this game? Ratings will be rebuilt.")) return;
-    try {
-      await adminDeleteGame(pin, id);
-      onDone("Game deleted.");
-      if (editingId === id) reset();
     } catch (e) {
       onError(e);
     }
@@ -241,8 +260,50 @@ function GameForm({
     </select>
   );
 
+  /**
+   * The winner picker for one team's row. This is the most consequential control on
+   * the page — the winner is what the rating is built on (SPEC §2), and a mis-set one
+   * is only caught later by a rebuild — so it reads as a filled button with the whole
+   * row tinted, not a bare radio. The input stays a real radio (visually hidden) to
+   * keep the group keyboard- and screen-reader-navigable.
+   */
+  const wonToggle = (team: "a" | "b") => {
+    const isWinner = winner === team;
+    return (
+      <label
+        className={`ml-auto cursor-pointer rounded-md border px-3 py-1 text-xs font-semibold focus-within:ring-2 focus-within:ring-emerald-400 ${
+          isWinner
+            ? "border-emerald-600 bg-emerald-600 text-white"
+            : "border-slate-300 text-slate-400 hover:border-slate-400 hover:text-slate-600"
+        }`}
+      >
+        <input
+          type="radio"
+          name="winner"
+          className="sr-only"
+          checked={isWinner}
+          onChange={() => setWinner(team)}
+        />
+        {isWinner ? "Won" : "Won?"}
+      </label>
+    );
+  };
+
+  const teamRow = (team: "a" | "b", label: string, first: number) => (
+    <div
+      className={`flex flex-wrap items-center gap-2 rounded-md border p-2 text-sm ${
+        winner === team ? "border-emerald-200 bg-emerald-50" : "border-transparent"
+      }`}
+    >
+      <span className="w-14 text-slate-500">{label}</span>
+      {picker(first)}
+      {picker(first + 1)}
+      {wonToggle(team)}
+    </div>
+  );
+
   return (
-    <section className="space-y-4">
+    <section id="game-form" className="scroll-mt-4 space-y-4">
       <h2 className="text-lg font-semibold">
         {editingId === null ? "Log a game" : `Edit game #${editingId}`}
       </h2>
@@ -258,33 +319,8 @@ function GameForm({
           />
         </label>
 
-        <div className="flex flex-wrap items-center gap-2 text-sm">
-          <span className="w-16 text-slate-500">Team A</span>
-          {picker(0)}
-          {picker(1)}
-          <label className="ml-2 flex items-center gap-1">
-            <input
-              type="radio"
-              checked={winner === "a"}
-              onChange={() => setWinner("a")}
-            />
-            won
-          </label>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2 text-sm">
-          <span className="w-16 text-slate-500">Team B</span>
-          {picker(2)}
-          {picker(3)}
-          <label className="ml-2 flex items-center gap-1">
-            <input
-              type="radio"
-              checked={winner === "b"}
-              onChange={() => setWinner("b")}
-            />
-            won
-          </label>
-        </div>
+        {teamRow("a", "Team A", 0)}
+        {teamRow("b", "Team B", 2)}
 
         <div className="flex items-center gap-2 text-sm">
           <span className="w-16 text-slate-500">Score</span>
@@ -326,7 +362,7 @@ function GameForm({
           </button>
           {editingId !== null && (
             <button
-              onClick={reset}
+              onClick={onCancel}
               className="rounded-md border border-slate-300 px-4 py-2 text-sm"
             >
               Cancel
@@ -334,9 +370,46 @@ function GameForm({
           )}
         </div>
       </div>
+    </section>
+  );
+}
 
+// ---- Logged games (edit / delete) ------------------------------------------
+
+function GameList({
+  pin,
+  games,
+  editingId,
+  onEdit,
+  onDone,
+  onError,
+}: {
+  pin: string;
+  games: GameView[];
+  editingId: number | null;
+  onEdit: (g: GameView) => void;
+  onDone: (m: string) => void;
+  onError: (e: unknown) => void;
+}) {
+  const [showAll, setShowAll] = useState(false);
+
+  async function remove(id: number) {
+    if (!confirm("Delete this game? Ratings will be rebuilt.")) return;
+    try {
+      await adminDeleteGame(pin, id);
+      onDone("Game deleted.");
+    } catch (e) {
+      onError(e);
+    }
+  }
+
+  const shown = showAll ? games : games.slice(0, RECENT_GAMES);
+
+  return (
+    <section className="space-y-3">
+      <h2 className="text-lg font-semibold">Logged games</h2>
       <ul className="space-y-2">
-        {games.map((g) => {
+        {shown.map((g) => {
           const aWon = g.winner === "a";
           const winTeam = aWon ? g.teamA : g.teamB;
           const loseTeam = aWon ? g.teamB : g.teamA;
@@ -345,7 +418,9 @@ function GameForm({
           return (
             <li
               key={g.id}
-              className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+              className={`flex items-center gap-3 rounded-lg border bg-white px-3 py-2 text-sm ${
+                g.id === editingId ? "border-slate-900" : "border-slate-200"
+              }`}
             >
               <span className="w-24 shrink-0 whitespace-nowrap text-xs text-slate-400">
                 {formatDate(g.playedDate)}
@@ -364,9 +439,10 @@ function GameForm({
                   ? `${winScore}–${loseScore}`
                   : ""}
               </span>
-              <span className="flex gap-2">
+              {/* Delete is kept clear of edit — it's destructive and they sat adjacent. */}
+              <span className="flex shrink-0 items-center gap-3">
                 <button
-                  onClick={() => loadForEdit(g)}
+                  onClick={() => onEdit(g)}
                   className="text-slate-500 hover:text-slate-900"
                 >
                   edit
@@ -382,6 +458,11 @@ function GameForm({
           );
         })}
       </ul>
+      <ShowAllGames
+        total={games.length}
+        showAll={showAll}
+        onToggle={() => setShowAll((v) => !v)}
+      />
     </section>
   );
 }

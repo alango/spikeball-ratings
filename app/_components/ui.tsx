@@ -44,6 +44,35 @@ function Tip({
   );
 }
 
+/**
+ * How many games a history list shows before it has to be expanded (public board and
+ * admin alike). Without a cap both lists render every game ever logged — the admin
+ * page had already grown to three screens, pushing the roster below all of it.
+ */
+export const RECENT_GAMES = 20;
+
+/** Expand/collapse control for a capped history list. Renders nothing if it all fits. */
+export function ShowAllGames({
+  total,
+  showAll,
+  onToggle,
+}: {
+  total: number;
+  showAll: boolean;
+  onToggle: () => void;
+}) {
+  if (total <= RECENT_GAMES) return null;
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-500 hover:text-slate-900"
+    >
+      {showAll ? `Show recent ${RECENT_GAMES}` : `Show all ${total} games`}
+    </button>
+  );
+}
+
 export function Notice({ kind, children }: { kind: "info" | "error"; children: React.ReactNode }) {
   const cls =
     kind === "error"
