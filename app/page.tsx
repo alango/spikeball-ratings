@@ -61,7 +61,9 @@ function Leaderboard({ data }: { data: Awaited<ReturnType<typeof getBoard>> | nu
             >
               Last 5
             </th>
-            <th className="w-16 px-2 py-2 text-center sm:w-20 sm:px-3">W–L</th>
+            <th className="w-16 whitespace-nowrap px-2 py-2 text-center sm:w-20 sm:px-3">
+              W–L
+            </th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
@@ -78,7 +80,7 @@ function Leaderboard({ data }: { data: Awaited<ReturnType<typeof getBoard>> | nu
               <td className="whitespace-nowrap px-2 py-2 text-center sm:px-3">
                 <FormSquares form={s.form} />
               </td>
-              <td className="px-2 py-2 text-center tabular-nums text-slate-500 sm:px-3">
+              <td className="whitespace-nowrap px-2 py-2 text-center tabular-nums text-slate-500 sm:px-3">
                 {s.wins}–{s.losses}
               </td>
             </tr>
