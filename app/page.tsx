@@ -114,7 +114,10 @@ function History({ data }: { data: Awaited<ReturnType<typeof getHistory>> | null
           <h3 className="mb-1 px-1 text-xs font-medium uppercase tracking-wide text-slate-400">
             {formatDate(date)}
           </h3>
-          <ul className="divide-y divide-slate-100 overflow-hidden rounded-lg border border-slate-200 bg-white">
+          {/* No `overflow-hidden` here: it would clip the name/rating tooltips, which
+              sit above their row and so escape the list on its top game. The rows have
+              no background of their own, so the rounded corners survive without it. */}
+          <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white">
             {games.map((g) => {
               const aWon = g.winner === "a";
               const winTeam = aWon ? g.teamA : g.teamB;

@@ -416,7 +416,10 @@ function GameList({
           <h3 className="mb-1 px-1 text-xs font-medium uppercase tracking-wide text-slate-400">
             {formatDate(date)}
           </h3>
-          <ul className="divide-y divide-slate-100 overflow-hidden rounded-lg border border-slate-200 bg-white">
+          {/* No `overflow-hidden` here: it would clip the name tooltips, which sit above
+              their row and so escape the list on its top game. The edit highlight is a
+              row background, so the end rows round themselves to keep the corners. */}
+          <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white [&>li:first-child]:rounded-t-lg [&>li:last-child]:rounded-b-lg">
             {games.map((g) => {
               const aWon = g.winner === "a";
               const winTeam = aWon ? g.teamA : g.teamB;
