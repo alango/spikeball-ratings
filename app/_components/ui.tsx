@@ -21,7 +21,6 @@ export function Tip({
   triggerClass = "align-baseline",
   placement = "above",
   nowrap = true,
-  align = "center",
 }: {
   children: React.ReactNode;
   tip: React.ReactNode;
@@ -34,12 +33,6 @@ export function Tip({
    * screen and take the page's horizontal scroll with it.
    */
   nowrap?: boolean;
-  /**
-   * Centred on the trigger by default. `end` right-aligns it instead — for a trigger
-   * sitting near the right edge of a scroll container, where a centred tip hangs past
-   * the edge and gets clipped.
-   */
-  align?: "center" | "end";
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -54,9 +47,9 @@ export function Tip({
     >
       {children}
       <span
-        className={`pointer-events-none absolute z-10 ${
-          align === "end" ? "right-0" : "left-1/2 -translate-x-1/2"
-        } ${placement === "below" ? "top-full mt-1" : "bottom-full mb-1"} ${
+        className={`pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 ${
+          placement === "below" ? "top-full mt-1" : "bottom-full mb-1"
+        } ${
           nowrap
             ? "whitespace-nowrap"
             : // Prose tips carry their own casing: a trigger inside a table header

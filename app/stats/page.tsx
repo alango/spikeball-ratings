@@ -378,42 +378,19 @@ function PartnerTable({
           <th className="px-3 py-2">With</th>
           <th className="w-14 px-2 py-2 text-center">Gms</th>
           <th className="w-16 px-2 py-2 text-center">W–L</th>
-          <th className="w-20 px-2 py-2 text-center" title="Win rate playing with them">
+          {/* `winPctWithout` is still computed and tested in stats.ts — the with-vs-
+              without comparison is the right idea, but it belongs with the later
+              rating-aware pass (SPEC §11.1), not as a raw percentage-point diff. */}
+          <th
+            className="w-20 px-2 py-2 text-center sm:px-3"
+            title="Win rate playing with them"
+          >
             Win %
-          </th>
-          {/* Not "vs solo" — nobody plays alone in 2v2. The comparison is this
-              partner against every OTHER partner the player has had. The number is
-              a difference of two percentages, which nobody guesses from a heading,
-              so the explanation is one hover away rather than in a footnote. */}
-          <th className="w-20 px-2 py-2 text-center sm:px-3">
-            <Tip
-              nowrap={false}
-              ariaLabel="What the vs others column means"
-              // Drops downward and right-aligns: the table scrolls horizontally, and
-              // a scroll container clips on BOTH axes — so a tip above this header is
-              // cut off at the table's top edge, and a centred one at its right edge.
-              placement="below"
-              align="end"
-              // A dotted underline rather than an ⓘ glyph: the affordance has to be
-              // free, because this table is already at its width budget on a phone
-              // and an extra 12px here wraps the W–L column.
-              triggerClass="border-b border-dotted border-slate-300 uppercase tracking-wide"
-              tip={
-                <>
-                  How much this partner changes their results. +30 means they win 30
-                  percentage points more often with this partner than they do in all
-                  their other games.
-                </>
-              }
-            >
-              vs others
-            </Tip>
           </th>
         </tr>
       }
     >
       {stats.partners.map((p) => {
-        const diff = p.winPctWithout === null ? null : p.winPctWith - p.winPctWithout;
         const badge =
           best && p.playerId === best.playerId && best.winPctWith > 0.5
             ? "best"
@@ -441,16 +418,8 @@ function PartnerTable({
             <td className="px-2 py-2 text-center tabular-nums">
               {p.wins}–{p.losses}
             </td>
-            <td className="px-2 py-2 text-center tabular-nums">{pct(p.winPctWith)}</td>
             <td className="px-2 py-2 text-center tabular-nums sm:px-3">
-              {diff === null ? (
-                <span className="text-slate-400">—</span>
-              ) : (
-                <span className={diff > 0 ? "text-emerald-600" : diff < 0 ? "text-rose-600" : "text-slate-400"}>
-                  {diff > 0 ? "+" : ""}
-                  {Math.round(diff * 100)}
-                </span>
-              )}
+              {pct(p.winPctWith)}
             </td>
           </tr>
         );
