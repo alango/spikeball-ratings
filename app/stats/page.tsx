@@ -8,6 +8,7 @@ import { usePoll } from "../_lib/usePoll";
 import { getStats } from "../_lib/api";
 import type { PartnerRecord, PlayerStats, StatsResp } from "../_lib/api";
 import { Notice, formatDate } from "../_components/ui";
+import { RatingGraph } from "./RatingGraph";
 
 export default function StatsPage() {
   // useSearchParams needs a Suspense boundary during prerender.
@@ -39,6 +40,17 @@ function Stats() {
         <h1 className="mb-3 text-xl font-semibold">Player stats</h1>
         {error && <Notice kind="error">{error}</Notice>}
         <PlayerSection data={data} selectedId={selectedId} onSelect={select} />
+      </section>
+
+      <section>
+        <h2 className="mb-1 text-lg font-semibold">Rating over time</h2>
+        <p className="mb-3 text-xs text-slate-500">
+          One point per session. A line keeps sinking while a player is away — being
+          inactive costs rating on the board, so it costs it here too.
+        </p>
+        {data && (
+          <RatingGraph series={data.series} players={data.players} games={data.games} />
+        )}
       </section>
     </div>
   );

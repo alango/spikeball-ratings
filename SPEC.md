@@ -296,6 +296,15 @@ the paired comparison can, and it's one extra counter.
 > **≥3 games together** before it's claimed. Rates are shown, not hidden — the reader
 > chose to look — but the page never awards a title on a single game.
 
+> **Known-imperfect, deliberately.** A bare game floor still lets a thin record beat a
+> thick one: on the real history it awards Alex's "best partner" to David (3–0) over
+> Jamie (11–1). Accepted for now. The fix is not a bigger floor — that's just a
+> different arbitrary number — but ranking on something rating-aware (shrinkage toward
+> the player's own baseline, or wins against expectation from pre-game ratings), which
+> belongs with a later advanced-stats pass rather than bolted onto a counting table.
+> Until then the raw game count sits next to every rate so the reader can price the
+> claim themselves. **Not a bug — don't "fix" it with a threshold tweak.**
+
 ### 11.2 Rating over time — one point per session
 
 **One plotted point per session (played-date), not per game.** A session is the unit
