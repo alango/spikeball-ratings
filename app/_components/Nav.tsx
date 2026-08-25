@@ -30,6 +30,7 @@ export function Nav() {
         </Link>
         <div className="ml-auto flex shrink-0 items-center gap-4 text-sm">
           {navLink("/", "Board")}
+          {navLink("/stats", "Stats")}
           {navLink("/admin", "Admin")}
         </div>
       </nav>

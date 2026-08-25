@@ -74,6 +74,119 @@ export interface GamePayload {
   scoreB: number | null;
 }
 
+// ---- Stats page (SPEC §11) — shapes mirror src/lib/stats.ts ----
+
+export interface Streak {
+  type: "W" | "L";
+  length: number;
+}
+
+export interface PartnerRecord {
+  playerId: number;
+  games: number;
+  wins: number;
+  losses: number;
+  /** Win rate in games played WITH this partner, 0–1. */
+  winPctWith: number;
+  /** The same player's win rate in their other games, 0–1; null if they have none. */
+  winPctWithout: number | null;
+}
+
+export interface OpponentRecord {
+  playerId: number;
+  games: number;
+  wins: number;
+  losses: number;
+  winPct: number;
+}
+
+export interface ScoredGameRef {
+  gameId: number;
+  playedDate: string;
+  margin: number;
+  scoreFor: number;
+  scoreAgainst: number;
+}
+
+export interface ScoreStats {
+  /** Denominator for every score stat — scores are optional, so this is not `games`. */
+  scoredGames: number;
+  avgMargin: number | null;
+  biggestWin: ScoredGameRef | null;
+  biggestLoss: ScoredGameRef | null;
+  deuceGames: number;
+}
+
+export interface RatingSwing {
+  gameId: number;
+  playedDate: string;
+  delta: number;
+}
+
+export interface RatingStats {
+  /** Rating after their most recent game — no drift past that date. */
+  current: number | null;
+  peak: { elo: number; playedDate: string } | null;
+  biggestGain: RatingSwing | null;
+  biggestLoss: RatingSwing | null;
+}
+
+export interface PlayerStats {
+  id: number;
+  games: number;
+  wins: number;
+  losses: number;
+  winPct: number | null;
+  sessions: number;
+  firstPlayed: string | null;
+  lastPlayed: string | null;
+  currentStreak: Streak | null;
+  longestWinStreak: number;
+  longestLossStreak: number;
+  partners: PartnerRecord[];
+  opponents: OpponentRecord[];
+  scores: ScoreStats;
+  rating: RatingStats;
+}
+
+export interface SeriesPoint {
+  date: string;
+  elo: number;
+  /** False on a session the player sat out — the point is inactivity drift only. */
+  played: boolean;
+  games: number;
+  delta: number | null;
+}
+
+export interface PlayerSeries {
+  playerId: number;
+  points: SeriesPoint[];
+}
+
+export interface LeagueStats {
+  games: number;
+  sessions: number;
+  players: number;
+  activePlayers: number;
+  firstSession: string | null;
+  lastSession: string | null;
+  scoredGames: number;
+  distinctPartnerships: number;
+}
+
+export interface StatsResp {
+  players: Player[];
+  stats: Record<number, PlayerStats>;
+  series: PlayerSeries[];
+  league: LeagueStats;
+  /** Drift-to-today (μ, σ) per player — the predictor's inputs, matching the board. */
+  ratings: Record<number, { mu: number; sigma: number }>;
+  games: GameView[];
+  /** Games a pairing needs before a superlative ("best partner") is claimed. */
+  superlativeMinGames: number;
+  asOf: string;
+}
+
 async function getJson<T>(url: string): Promise<T> {
   const res = await fetch(url, { cache: "no-store" });
   const json = await res.json().catch(() => ({}));
@@ -104,6 +217,7 @@ async function send<T>(
 export const getBoard = () => getJson<BoardResp>("/api/board");
 export const getHistory = () => getJson<{ games: GameView[] }>("/api/history");
 export const getPlayers = () => getJson<{ players: Player[] }>("/api/players");
+export const getStats = () => getJson<StatsResp>("/api/stats");
 
 // ---- Admin (PIN-gated) ----
 export const adminVerify = (pin: string) =>
