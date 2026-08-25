@@ -262,3 +262,107 @@ season concept later (see schema note above).
    confirm rebuild + board are correct; confirm an inactive player drifts down.
 
 Test modules 1 and 2 hard and independently — everything else is plumbing.
+
+---
+
+## 11. Stats page
+
+A third public page (`/stats`), read-only like the rest of the public UI. Three
+sections, sharing one `/api/stats` read. **Everything here is a pure function of
+`games` + roster** — no schema change, no new writes, no new cache. The replay
+(`rebuildWithDeltas`) already computes the per-game before/after ratings the graph
+and the rating stats need; today they're discarded after the history hover uses them.
+
+### 11.1 Player stats — one player at a time
+
+Pick a player from a dropdown; get their detail. **Per-player lists, not a
+league-wide grid.** A 14×14 partner matrix is 196 cells that no phone can render
+and nobody reads; the same data as "with X: 6–1" for each of ~13 partners is
+legible and sorts usefully. The league-wide grid is a different feature, not this one.
+
+Contents: overall record and win %, sessions attended, current and longest streaks,
+score-derived stats (average margin, biggest win, biggest loss, deuce games), and
+rating-derived stats (current, peak with its date, biggest single-game gain and loss).
+Plus two tables: **partners** and **opponents**, each with games / W–L, sorted by
+games played.
+
+The partner table also carries **win % with that partner vs win % without them**.
+Raw "6–1 with Alex" can't distinguish "we're good together" from "Alex is good" —
+the paired comparison can, and it's one extra counter.
+
+> **Small samples are the real hazard here.** 94 games × 2 pairs spread over 91
+> possible pairings means most partnerships have 1–3 games. So: tables always show
+> the raw game count next to any rate, and any *superlative* ("best partner") requires
+> **≥3 games together** before it's claimed. Rates are shown, not hidden — the reader
+> chose to look — but the page never awards a title on a single game.
+
+### 11.2 Rating over time — one point per session
+
+**One plotted point per session (played-date), not per game.** A session is the unit
+people remember ("how did I do on Thursday"); nine points stacked on one date is
+noise. The plotted value is the player's rating **after the last game of that date**,
+which is self-consistent because write-path drift (§5.1) is already applied at each
+game — so the point reads as "what you were worth when you walked off the court".
+
+**Lines decay across sessions a player missed.** This is the load-bearing decision.
+A player who played 7 Jul and then 20 Aug genuinely *lost* board rating over the six
+sessions in between, because display drift (§5.2) inflates σ toward today whether or
+not they play. A straight line between their two points would hide the single most
+distinctive behavior of this rating system, and would leave the graph's last point
+disagreeing with the leaderboard for every inactive player. So the series is **a value
+per player per session date**, not "points where they played": on a session they
+missed, their μ is unchanged and their σ is drifted from their last game to that
+session's date, exactly as `displayBoard` does for today.
+
+> Consequence: the **x-axis must be date-scaled**, not evenly-spaced session indices.
+> A decaying line is a claim about elapsed time; drawing it over an axis that hides
+> elapsed time makes the slope a lie.
+
+A player's series **starts at their first session** — plotting a flat default 1500 for
+the weeks before they joined the league is noise, not information.
+
+**Interaction: hover summarizes, click expands.** Hover shows date, rating and change;
+clicking a point opens a panel **below the chart** listing that session's games and
+their per-player rating changes. A session runs to 13 games, which is not a tooltip;
+and the public UI must work on a phone, where there is no hover at all.
+
+**Hand-rolled SVG, no charting library.** ~13 points per line and a single chart type
+don't justify recharts' ~110 KB gzipped and 28 transitive packages (including Redux
+Toolkit) on a five-dependency app. Revisit if the stats page ever wants many chart types.
+
+### 11.3 Matchup predictor — four players, all three pairings
+
+Pick four players; the page shows **all three distinct 2v2 splits** with each side's
+win probability. Four players admit exactly `C(4,2)/2 = 3` pairings, so this is a
+three-row table, and the fairest split (closest to 50/50) falls out visually.
+
+- Probabilities come from **openskill's `predictWin`** — no hand-rolled math, same rule
+  as everywhere else (§2).
+- It is fed **drift-to-today ratings** — the same numbers the board shows. An inactive
+  player is genuinely less predictable, so their matchups correctly pull toward 50/50,
+  and nobody can find an arithmetic mismatch between this page and the leaderboard.
+
+**No predicted score.** openskill gives P(win), not a margin; producing "about 21–14"
+would mean fitting a *new* empirical margin model against the rating gap — new math to
+build, test and defend, for a number nobody can check. Explicitly out (§1: simplicity
+over accuracy). The margin model stays one-directional: scores inform ratings (§2),
+ratings do not predict scores.
+
+> **This is not matchmaking** (§1, and the CLAUDE.md "don't build" list). It does not
+> pick who plays, schedule anything, or write a row. Humans choose four people who are
+> already standing on the court; the app reports what the existing ratings imply about
+> a split they were going to make anyway. The line to hold: the app never proposes
+> *who should play*, only evaluates a matchup it was handed.
+
+### 11.4 Where the code lives
+
+- `src/lib/stats.ts` — pure counting and series assembly. Computes no rating math
+  itself: it calls `driftSigma`/`daysBetween` (rating) and `eloScore` (display), the
+  same way `views.ts` calls `eloDelta`. Unit-tested on synthetic history.
+- `src/lib/predict.ts` — the `predictWin` wrapper and pairing enumeration. Unit-tested.
+- `app/api/stats/route.ts` — one read, `force-dynamic` like the others.
+
+Stats are computed for **every player on each read**, not just the selected one, so
+the dropdown switches with no refetch. At 14 players and 94 games that's free. The
+split point, if history grows: move per-player detail behind `?player=` and keep the
+series in the shared payload.
