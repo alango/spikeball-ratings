@@ -78,24 +78,17 @@ export function Predictor({
           Pick {FOUR - picked.length} more player{FOUR - picked.length === 1 ? "" : "s"}.
         </p>
       ) : (
+        // Sorted fairest-first by `predictPairings`, which is enough to point at the
+        // even split without labelling one.
         <div className="space-y-2">
-          {predictions.map((p, i) => (
+          {predictions.map((p) => (
             <Pairing
               key={`${p.teamA.join()}-${p.teamB.join()}`}
               teamA={p.teamA.map(nameOf)}
               teamB={p.teamB.map(nameOf)}
               probA={p.probA}
-              // Fairest of the three, since the list is sorted by imbalance. Only
-              // worth flagging when it is actually close to even.
-              fairest={i === 0 && p.imbalance < 0.2}
             />
           ))}
-          <p className="px-1 text-xs text-slate-400">
-            From each player&apos;s current rating, including the uncertainty added for
-            time off — so a rusty player&apos;s matchups sit nearer a coin flip. Ratings
-            spread out faster than the model expects, so a mismatched four reads more
-            one-sided than it will feel on the court.
-          </p>
         </div>
       )}
 
@@ -128,12 +121,10 @@ function Pairing({
   teamA,
   teamB,
   probA,
-  fairest,
 }: {
   teamA: string[];
   teamB: string[];
   probA: number;
-  fairest: boolean;
 }) {
   // Team B's number is derived from A's rounding rather than rounded separately, so
   // the pair always reads as 100 instead of occasionally 49–52.
@@ -146,11 +137,7 @@ function Pairing({
   const b = 100 - a;
   const exact = `${precise(probA)} / ${precise(1 - probA)}`;
   return (
-    <div
-      className={`rounded-lg border bg-white px-3 py-2 ${
-        fairest ? "border-emerald-300" : "border-slate-200"
-      }`}
-    >
+    <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
         <span className={a >= b ? "font-semibold" : "text-slate-500"}>
           {teamA.join(" & ")}
@@ -159,11 +146,6 @@ function Pairing({
         <span className={b > a ? "font-semibold" : "text-slate-500"}>
           {teamB.join(" & ")}
         </span>
-        {fairest && (
-          <span className="rounded bg-emerald-50 px-1 py-0.5 text-[10px] font-medium uppercase text-emerald-700">
-            fairest
-          </span>
-        )}
         <span className="ml-auto tabular-nums font-semibold" title={exact}>
           {a}–{b}
         </span>

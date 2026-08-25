@@ -14,18 +14,32 @@ import type { FormResult, PlayerRef, Standing } from "../_lib/api";
  * horizontally, and a scroll container clips vertically too, so a tall tip on the top
  * row would be cut off against the table's edge — those flip downward.
  */
-function Tip({
+export function Tip({
   children,
   tip,
   ariaLabel,
   triggerClass = "align-baseline",
   placement = "above",
+  nowrap = true,
+  align = "center",
 }: {
   children: React.ReactNode;
   tip: React.ReactNode;
   ariaLabel?: string;
   triggerClass?: string;
   placement?: "above" | "below";
+  /**
+   * Tips are single-line by default (a rating delta, a short result). Set false for
+   * prose: a long tip centred on a narrow trigger would otherwise run off a phone
+   * screen and take the page's horizontal scroll with it.
+   */
+  nowrap?: boolean;
+  /**
+   * Centred on the trigger by default. `end` right-aligns it instead — for a trigger
+   * sitting near the right edge of a scroll container, where a centred tip hangs past
+   * the edge and gets clipped.
+   */
+  align?: "center" | "end";
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -40,9 +54,15 @@ function Tip({
     >
       {children}
       <span
-        className={`pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 ${
-          placement === "below" ? "top-full mt-1" : "bottom-full mb-1"
-        } whitespace-nowrap rounded bg-slate-900 px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-white group-hover:block ${
+        className={`pointer-events-none absolute z-10 ${
+          align === "end" ? "right-0" : "left-1/2 -translate-x-1/2"
+        } ${placement === "below" ? "top-full mt-1" : "bottom-full mb-1"} ${
+          nowrap
+            ? "whitespace-nowrap"
+            : // Prose tips carry their own casing: a trigger inside a table header
+              // inherits `uppercase`, which turns an explanation into shouting.
+              "w-52 whitespace-normal text-left font-normal normal-case leading-snug tracking-normal"
+        } rounded bg-slate-900 px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-white group-hover:block ${
           open ? "block" : "hidden"
         }`}
       >

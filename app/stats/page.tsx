@@ -6,8 +6,8 @@ import { Suspense, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { usePoll } from "../_lib/usePoll";
 import { getStats } from "../_lib/api";
-import type { PartnerRecord, PlayerStats, StatsResp } from "../_lib/api";
-import { Notice, formatDate } from "../_components/ui";
+import type { GameView, PartnerRecord, PlayerStats, StatsResp } from "../_lib/api";
+import { Notice, Tip, formatDate } from "../_components/ui";
 import { RatingGraph } from "./RatingGraph";
 import { Predictor } from "./Predictor";
 
@@ -36,33 +36,64 @@ function Stats() {
   };
 
   return (
-    <div className="space-y-8">
-      <section>
-        <h1 className="mb-3 text-xl font-semibold">Player stats</h1>
-        {error && <Notice kind="error">{error}</Notice>}
-        <PlayerSection data={data} selectedId={selectedId} onSelect={select} />
-      </section>
+    <div className="space-y-3">
+      {error && <Notice kind="error">{error}</Notice>}
 
-      <section>
-        <h2 className="mb-1 text-lg font-semibold">Rating over time</h2>
-        <p className="mb-3 text-xs text-slate-500">
-          One point per session. A line keeps sinking while a player is away — being
-          inactive costs rating on the board, so it costs it here too.
-        </p>
+      <Section title="Player stats" defaultOpen>
+        <PlayerSection data={data} selectedId={selectedId} onSelect={select} />
+      </Section>
+
+      <Section title="Rating over time">
         {data && (
           <RatingGraph series={data.series} players={data.players} games={data.games} />
         )}
-      </section>
+      </Section>
 
-      <section>
-        <h2 className="mb-1 text-lg font-semibold">Matchup predictor</h2>
-        <p className="mb-3 text-xs text-slate-500">
-          Pick four players and see all three ways to split them. It rates a matchup
-          you hand it — it won&apos;t tell you who should be playing.
-        </p>
+      <Section title="Matchup predictor">
         {data && <Predictor players={data.players} ratings={data.ratings} />}
-      </section>
+      </Section>
     </div>
+  );
+}
+
+/**
+ * A collapsible section. The page holds three fairly tall tools and most visits want
+ * one of them, so all but the first start folded away. Content is unmounted while
+ * closed — the graph measures its own container, which it can't do at zero width.
+ */
+function Section({
+  title,
+  children,
+  defaultOpen = false,
+}: {
+  title: string;
+  children: React.ReactNode;
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <section>
+      <h2>
+        <button
+          type="button"
+          aria-expanded={open}
+          onClick={() => setOpen((o) => !o)}
+          className="flex w-full items-center gap-2 rounded-lg py-1 text-left text-lg font-semibold hover:text-slate-600"
+        >
+          <svg
+            viewBox="0 0 20 20"
+            aria-hidden
+            className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${
+              open ? "rotate-90" : ""
+            }`}
+          >
+            <path d="M7 4l7 6-7 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          {title}
+        </button>
+      </h2>
+      {open && <div className="mt-2">{children}</div>}
+    </section>
   );
 }
 
@@ -125,7 +156,7 @@ function PlayerSection({
       {stats && (
         <>
           <Summary stats={stats} />
-          <ScoreAndRating stats={stats} />
+          <ScoreAndRating stats={stats} games={data.games} />
           <PartnerTable
             stats={stats}
             nameOf={nameOf}
@@ -174,7 +205,7 @@ function Summary({ stats }: { stats: PlayerStats }) {
       <Tile
         label="Streak"
         value={streak ? `${streak.length}${streak.type}` : "—"}
-        sub={`best ${stats.longestWinStreak}W / ${stats.longestLossStreak}L`}
+        sub={`longest ${stats.longestWinStreak}W / ${stats.longestLossStreak}L`}
       />
       <Tile
         label="Last played"
@@ -185,7 +216,46 @@ function Summary({ stats }: { stats: PlayerStats }) {
   );
 }
 
-function ScoreAndRating({ stats }: { stats: PlayerStats }) {
+/** "Alex & Jamie beat Alan & Mike 15–2" — the hover detail behind a headline figure. */
+function describeGame(g: GameView): string {
+  const aWon = g.winner === "a";
+  const win = (aWon ? g.teamA : g.teamB).map((p) => p.name).join(" & ");
+  const lose = (aWon ? g.teamB : g.teamA).map((p) => p.name).join(" & ");
+  const ws = aWon ? g.scoreA : g.scoreB;
+  const ls = aWon ? g.scoreB : g.scoreA;
+  return `${win} beat ${lose}${ws !== null && ls !== null ? ` ${ws}–${ls}` : ""}`;
+}
+
+/** Wraps a tile value in the game it came from, on hover (or tap, on a phone). */
+function GameTip({
+  gameId,
+  games,
+  children,
+}: {
+  gameId: number | undefined;
+  games: GameView[];
+  children: React.ReactNode;
+}) {
+  const g = gameId === undefined ? undefined : games.find((x) => x.id === gameId);
+  if (!g) return <>{children}</>;
+  return (
+    <Tip
+      nowrap={false}
+      ariaLabel={describeGame(g)}
+      triggerClass="align-baseline"
+      tip={
+        <>
+          {describeGame(g)}
+          <span className="mt-0.5 block text-slate-300">{formatDate(g.playedDate)}</span>
+        </>
+      }
+    >
+      {children}
+    </Tip>
+  );
+}
+
+function ScoreAndRating({ stats, games }: { stats: PlayerStats; games: GameView[] }) {
   const { scores, rating } = stats;
   const margin =
     scores.avgMargin === null
@@ -207,7 +277,11 @@ function ScoreAndRating({ stats }: { stats: PlayerStats }) {
       />
       <Tile
         label="Best game"
-        value={rating.biggestGain ? `+${rating.biggestGain.delta}` : "—"}
+        value={
+          <GameTip gameId={rating.biggestGain?.gameId} games={games}>
+            {rating.biggestGain ? `+${rating.biggestGain.delta}` : "—"}
+          </GameTip>
+        }
         sub={rating.biggestGain ? formatDate(rating.biggestGain.playedDate) : undefined}
       />
       <Tile
@@ -219,8 +293,20 @@ function ScoreAndRating({ stats }: { stats: PlayerStats }) {
       />
       <Tile
         label="Biggest win"
-        value={game(scores.biggestWin)}
-        sub={`worst ${game(scores.biggestLoss)} · ${scores.deuceGames} deuce`}
+        value={
+          <GameTip gameId={scores.biggestWin?.gameId} games={games}>
+            {game(scores.biggestWin)}
+          </GameTip>
+        }
+        sub={
+          <>
+            worst{" "}
+            <GameTip gameId={scores.biggestLoss?.gameId} games={games}>
+              {game(scores.biggestLoss)}
+            </GameTip>{" "}
+            · {scores.deuceGames} deuce
+          </>
+        }
       />
     </div>
   );
@@ -296,12 +382,32 @@ function PartnerTable({
             Win %
           </th>
           {/* Not "vs solo" — nobody plays alone in 2v2. The comparison is this
-              partner against every OTHER partner the player has had. */}
-          <th
-            className="w-20 px-2 py-2 text-center sm:px-3"
-            title="Percentage points better (or worse) with this partner than in all their other games"
-          >
-            vs others
+              partner against every OTHER partner the player has had. The number is
+              a difference of two percentages, which nobody guesses from a heading,
+              so the explanation is one hover away rather than in a footnote. */}
+          <th className="w-20 px-2 py-2 text-center sm:px-3">
+            <Tip
+              nowrap={false}
+              ariaLabel="What the vs others column means"
+              // Drops downward and right-aligns: the table scrolls horizontally, and
+              // a scroll container clips on BOTH axes — so a tip above this header is
+              // cut off at the table's top edge, and a centred one at its right edge.
+              placement="below"
+              align="end"
+              // A dotted underline rather than an ⓘ glyph: the affordance has to be
+              // free, because this table is already at its width budget on a phone
+              // and an extra 12px here wraps the W–L column.
+              triggerClass="border-b border-dotted border-slate-300 uppercase tracking-wide"
+              tip={
+                <>
+                  How much this partner changes their results. +30 means they win 30
+                  percentage points more often with this partner than they do in all
+                  their other games.
+                </>
+              }
+            >
+              vs others
+            </Tip>
           </th>
         </tr>
       }
