@@ -9,6 +9,7 @@ import { getStats } from "../_lib/api";
 import type { PartnerRecord, PlayerStats, StatsResp } from "../_lib/api";
 import { Notice, formatDate } from "../_components/ui";
 import { RatingGraph } from "./RatingGraph";
+import { Predictor } from "./Predictor";
 
 export default function StatsPage() {
   // useSearchParams needs a Suspense boundary during prerender.
@@ -51,6 +52,15 @@ function Stats() {
         {data && (
           <RatingGraph series={data.series} players={data.players} games={data.games} />
         )}
+      </section>
+
+      <section>
+        <h2 className="mb-1 text-lg font-semibold">Matchup predictor</h2>
+        <p className="mb-3 text-xs text-slate-500">
+          Pick four players and see all three ways to split them. It rates a matchup
+          you hand it — it won&apos;t tell you who should be playing.
+        </p>
+        {data && <Predictor players={data.players} ratings={data.ratings} />}
       </section>
     </div>
   );
